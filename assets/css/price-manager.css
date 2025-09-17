@@ -1,0 +1,108 @@
+.psp-wrap {
+    margin-top: 20px;
+}
+.psp-wrap h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+.psp-wrap h1 .dashicons-before::before {
+    font-size: 32px;
+    height: 32px;
+    width: 32px;
+    vertical-align: -4px;
+    margin-right: 8px;
+}
+
+.psp-table {
+    margin-top: 20px;
+}
+.psp-table th {
+    font-weight: 600;
+    background-color: #f5f5f5;
+}
+.psp-table td, .psp-table th {
+    vertical-align: middle;
+    padding: 12px 15px !important;
+}
+.product-name-col { width: 25%; }
+.attributes-col { width: 45%; }
+.price-col { width: 30%; }
+
+.attributes-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.attribute-tag {
+    background-color: #e0e0e0;
+    color: #3c434a;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+.attribute-tag strong {
+    font-weight: 600;
+}
+
+.price-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+.variation-price-input {
+    width: 200px;
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: 1px solid #8c8f94;
+    transition: all 0.2s ease-in-out;
+    direction: ltr;
+    text-align: left;
+}
+.variation-price-input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+.save-status {
+    margin-right: 15px;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    position: relative;
+}
+.save-status .spinner {
+    visibility: hidden;
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 0;
+}
+.save-status.saving .spinner {
+    visibility: visible;
+}
+
+.status-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+.status-icon::before {
+    font-family: "dashicons";
+    content: '';
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.save-status.success .status-icon::before {
+    content: "\f147";
+    color: #46b450;
+    opacity: 1;
+}
+.save-status.error .status-icon::before {
+    content: "\f158";
+    color: #dc3232;
+    opacity: 1;
+}
