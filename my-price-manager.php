@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Puzzling Steel Price List
  * Description:       A page to manage all WooCommerce variable product prices using AJAX.
- * Version:           0.0.3
+ * Version:           0.0.4
  * Author:            Arsalan Arghavan
  */
 
@@ -60,7 +60,7 @@ function psp_render_admin_page() {
                                     foreach ($variation['attributes'] as $attribute_slug => $term_slug) {
                                         if (empty($term_slug)) continue;
                                         $decoded_term_slug = urldecode($term_slug);
-                                        $taxonomy = str_replace('attribute_', '', $attribute_slug);
+                                        $taxonomy = str_replace('attribute_', '', urldecode($attribute_slug));
                                         $attribute_label = wc_attribute_label($taxonomy);
                                         $term = get_term_by('slug', $decoded_term_slug, $taxonomy);
                                         $term_name = $term ? $term->name : $decoded_term_slug;
