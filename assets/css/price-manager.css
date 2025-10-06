@@ -18,13 +18,23 @@
     margin-bottom: 20px;
     display: flex;
     gap: 15px;
+    align-items: center;
 }
 .psp-filter-select {
     min-width: 200px;
 }
+.psp-search-wrapper {
+    display: flex;
+    gap: 5px;
+}
+.psp-search-input {
+    width: 250px;
+}
 
 .psp-table {
     margin-top: 20px;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 .psp-table th {
     font-weight: 600;
@@ -33,10 +43,15 @@
 .psp-table td, .psp-table th {
     vertical-align: middle;
     padding: 12px 15px !important;
+    border-bottom: 1px solid #e0e0e0;
 }
-.product-name-col { width: 25%; }
-.attributes-col { width: 45%; }
-.price-col { width: 30%; }
+.psp-table tr.product-start td {
+    border-top: 4px solid #c0c0c0;
+}
+
+.product-name-col { width: 30%; }
+.attributes-col { width: 35%; }
+.price-col { width: 17.5%; }
 
 .attributes-cell {
     display: flex;
@@ -50,10 +65,6 @@
     border-radius: 15px;
     font-size: 13px;
     border: 1px solid #ccc;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-}
-.attribute-tag strong {
-    font-weight: 600;
 }
 
 .price-wrapper {
@@ -61,17 +72,16 @@
     align-items: center;
     position: relative;
 }
-.variation-price-input {
-    width: 200px;
+.variation-price-input, .variation-sale-price-input {
+    width: 160px;
     padding: 8px 12px;
     font-size: 14px;
     border-radius: 4px;
     border: 1px solid #8c8f94;
-    transition: all 0.2s ease-in-out;
     direction: ltr;
     text-align: left;
 }
-.variation-price-input:focus {
+.variation-price-input:focus, .variation-sale-price-input:focus {
     border-color: #2271b1;
     box-shadow: 0 0 0 1px #2271b1;
     outline: none;
@@ -79,7 +89,6 @@
 
 .save-status {
     margin-right: 15px;
-    display: inline-block;
     width: 20px;
     height: 20px;
     position: relative;
@@ -95,15 +104,12 @@
     visibility: visible;
 }
 
-.status-icon {
-    font-size: 20px;
-    line-height: 1;
-}
 .status-icon::before {
     font-family: "dashicons";
     content: '';
     opacity: 0;
     transition: opacity 0.3s;
+    font-size: 20px;
 }
 .save-status.success .status-icon::before {
     content: "\f147";
@@ -114,4 +120,24 @@
     content: "\f158";
     color: #dc3232;
     opacity: 1;
+}
+
+.psp-pagination {
+    margin-top: 20px;
+}
+.psp-pagination .page-numbers {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 0 2px;
+    border: 1px solid #ccc;
+    text-decoration: none;
+    border-radius: 4px;
+}
+.psp-pagination .page-numbers.current {
+    background-color: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+.psp-pagination .page-numbers:hover {
+    background-color: #f0f0f0;
 }
