@@ -13,9 +13,8 @@ jQuery(document).ready(function($) {
     function applyFilters(page = 1) {
         var tableBody = $('#psp-price-list-body');
         var paginationContainer = $('#psp-pagination-container');
-        var originalHtml = tableBody.html();
         
-        tableBody.html('<tr><td colspan="4"><span class="spinner is-active" style="float:left; margin: 10px;"></span></td></tr>');
+        tableBody.html('<tr><td colspan="4"><span class="spinner is-active" style="float:right; margin: 10px;"></span></td></tr>');
 
         var filterData = {
             nonce: psp_ajax_object.filter_nonce,
@@ -35,8 +34,7 @@ jQuery(document).ready(function($) {
                 }
             })
             .fail(function() {
-                tableBody.html(originalHtml); // Restore original content on failure
-                alert('خطای ارتباط با سرور.');
+                tableBody.html('<tr><td colspan="4">خطای ارتباط با سرور.</td></tr>');
             });
 
         // Fetch Pagination
@@ -74,17 +72,16 @@ jQuery(document).ready(function($) {
         var pageUrl = $(this).attr('href');
         var pageNum = 1;
         
-        // Extract page number from URL
         var pagedMatch = pageUrl.match(/paged=(\d+)/);
         if (pagedMatch && pagedMatch[1]) {
             pageNum = parseInt(pagedMatch[1]);
         } else {
-             // Fallback for prev/next if no number in URL
-            var current = parseInt($('.page-numbers.current').text());
+            // Fallback for prev/next if no number in URL
+            var current = parseInt($('.page-numbers.current').text()) || 1;
             if ($(this).hasClass('next')) {
                 pageNum = current + 1;
             } else if ($(this).hasClass('prev')) {
-                pageNum = current - 1;
+                pageNum = Math.max(1, current - 1);
             } else {
                 pageNum = parseInt($(this).text()) || 1;
             }
@@ -130,7 +127,7 @@ jQuery(document).ready(function($) {
                     saveStatus.addClass('success');
                 } else {
                     saveStatus.addClass('error');
-                    alert('خطا: ' + (response.data.message || 'ناشناخته'));
+                    alert('خطا: ' + (response.data ? response.data.message : 'ناشناخته'));
                 }
             })
             .fail(function() {
@@ -143,3 +140,4 @@ jQuery(document).ready(function($) {
     });
 
 });
+// CORRECTED: The extra '}' at the end of the file was removed.

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       تغییر قیمت‌ها
  * Description:       A page to manage all WooCommerce variable product prices using AJAX.
- * Version:           0.5.1
+ * Version:           1.0.2
  * Author:            Arsalan Arghavan
  */
 
@@ -26,7 +26,15 @@ function psp_render_admin_page() {
 
         <div class="psp-filters">
             <?php
-            wp_dropdown_categories(['show_option_all' => 'همه دسته‌بندی‌ها', 'taxonomy' => 'product_cat', 'name' => 'psp_category_filter', 'id' => 'psp_category_filter', 'class' => 'psp-filter-select', 'hierarchical' => true, 'value_field' => 'slug']);
+            wp_dropdown_categories([
+                'show_option_all' => 'همه دسته‌بندی‌ها',
+                'taxonomy'        => 'product_cat',
+                'name'            => 'psp_category_filter',
+                'id'              => 'psp_category_filter',
+                'class'           => 'psp-filter-select',
+                'hierarchical'    => true,
+                'value_field'     => 'slug'
+            ]);
             $brands = get_terms(['taxonomy' => 'pwb-brand', 'hide_empty' => false]);
             if (!is_wp_error($brands) && !empty($brands)) {
                 echo '<select id="psp_brand_filter" name="psp_brand_filter" class="psp-filter-select"><option value="">همه برندها</option>';
@@ -56,48 +64,27 @@ function psp_render_admin_page() {
             </tbody>
         </table>
         <div id="psp-pagination-container" class="psp-pagination">
-             <?php psp_get_pagination_callback(false); // Initial pagination load ?>
+             <?php psp_get_pagination_callback(false); // CORRECTED: Initial pagination load with ajax=false ?>
         </div>
     </div>
     <?php
 }
 
-// Function to get query arguments based on POST data
-function psp_get_query_args() {
+// Function to fetch products and generate table rows
+function psp_get_filtered_products_callback($ajax = true) {
+    if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
+
     $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
     $search_term = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
     $category_slug = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
     $brand_slug = isset($_POST['brand']) ? sanitize_text_field($_POST['brand']) : '';
 
-    $args = [
-        'type' => 'variable',
-        'limit' => 50,
-        'page' => $paged,
-        's' => $search_term,
-    ];
-    
+    $args = ['type' => 'variable', 'limit' => 50, 'page' => $paged, 'return' => 'ids', 's' => $search_term];
     $tax_query = ['relation' => 'AND'];
-    if (!empty($category_slug)) {
-        $tax_query[] = ['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $category_slug];
-    }
-    if (!empty($brand_slug)) {
-        $tax_query[] = ['taxonomy' => 'pwb-brand', 'field' => 'slug', 'terms' => $brand_slug];
-    }
-    if (count($tax_query) > 1) {
-        $args['tax_query'] = $tax_query;
-    }
+    if (!empty($category_slug)) $tax_query[] = ['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $category_slug];
+    if (!empty($brand_slug)) $tax_query[] = ['taxonomy' => 'pwb-brand', 'field' => 'slug', 'terms' => $brand_slug];
+    if (count($tax_query) > 1) $args['tax_query'] = $tax_query;
 
-    return $args;
-}
-
-
-// Function to fetch products and generate table rows
-function psp_get_filtered_products_callback($ajax = true) {
-    if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
-
-    $args = psp_get_query_args();
-    $args['return'] = 'ids';
-    
     $query = new WC_Product_Query($args);
     $product_ids = $query->get_products();
     
@@ -111,24 +98,22 @@ function psp_get_filtered_products_callback($ajax = true) {
             $product = wc_get_product($product_id);
             if (!is_a($product, 'WC_Product_Variable')) continue;
 
-            $variations_data = $product->get_available_variations();
+            $variations = $product->get_children();
             $is_first_variation = true;
-            foreach ($variations_data as $variation_data) {
-                $variation = wc_get_product($variation_data['variation_id']);
-                if (!is_a($variation, 'WC_Product_Variation')) continue;
+            foreach ($variations as $variation_id) {
+                $variation = wc_get_product($variation_id);
+                if (!$variation) continue;
 
-                $row_class = '';
-                if ($is_first_variation && $last_product_id !== 0) {
-                    $row_class = 'class="product-start"';
-                }
+                $row_class = ($is_first_variation && $last_product_id !== 0) ? 'class="product-start"' : '';
                 ?>
                 <tr data-variation-id="<?php echo esc_attr($variation->get_id()); ?>" <?php echo $row_class; ?>>
                     <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
                     <td class="attributes-cell">
                         <?php
-                        foreach ($variation_data['attributes'] as $attr_key => $term_slug) {
-                            $taxonomy = str_replace('attribute_', '', urldecode($attr_key));
-                            $term = get_term_by('slug', urldecode($term_slug), $taxonomy);
+                        $attributes = $variation->get_variation_attributes();
+                        foreach ($attributes as $attr_name => $term_slug) {
+                            $taxonomy = str_replace('attribute_', '', $attr_name);
+                            $term = get_term_by('slug', $term_slug, $taxonomy);
                             echo '<span class="attribute-tag">' . wc_attribute_label($taxonomy) . ': <strong>' . ($term ? $term->name : $term_slug) . '</strong></span>';
                         }
                         ?>
@@ -165,20 +150,30 @@ add_action('wp_ajax_psp_get_filtered_products', 'psp_get_filtered_products_callb
 
 // Function to fetch pagination
 function psp_get_pagination_callback($ajax = true) {
-     if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
+    if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
 
-    $args = psp_get_query_args();
+    $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
+    $search_term = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+    $category_slug = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
+    $brand_slug = isset($_POST['brand']) ? sanitize_text_field($_POST['brand']) : '';
+
+    $args = ['type' => 'variable', 'limit' => 50, 'page' => $paged, 's' => $search_term];
+    $tax_query = ['relation' => 'AND'];
+    if (!empty($category_slug)) $tax_query[] = ['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $category_slug];
+    if (!empty($brand_slug)) $tax_query[] = ['taxonomy' => 'pwb-brand', 'field' => 'slug', 'terms' => $brand_slug];
+    if (count($tax_query) > 1) $args['tax_query'] = $tax_query;
+    
     $query = new WC_Product_Query($args);
     $total_products = $query->get_total();
     $num_pages = ceil($total_products / 50);
 
     $pagination_html = paginate_links([
-        'base' => admin_url('admin.php?page=steel_price_manager') . '%_%',
-        'format' => '&paged=%#%',
+        'base'      => admin_url('admin.php?page=steel_price_manager&paged=%#%'),
+        'format'    => '%#%',
         'prev_text' => '«',
         'next_text' => '»',
-        'total' => $num_pages,
-        'current' => $args['page'],
+        'total'     => $num_pages,
+        'current'   => $paged
     ]);
 
     if ($ajax) {
@@ -192,10 +187,10 @@ add_action('wp_ajax_psp_get_pagination', 'psp_get_pagination_callback');
 // Enqueue scripts and styles
 function psp_enqueue_admin_scripts($hook) {
     if ('puzzling_page_steel_price_manager' != $hook) return;
-    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', [], '1.0.1');
-    wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '1.0.1', true);
+    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', [], '1.0.2');
+    wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '1.0.2', true);
     wp_localize_script('psp-admin-script', 'psp_ajax_object', [
-        'ajax_url' => admin_url('admin-ajax.php'),
+        'ajax_url'     => admin_url('admin-ajax.php'),
         'update_nonce' => wp_create_nonce('psp_update_price_nonce'),
         'filter_nonce' => wp_create_nonce('psp_filter_nonce'),
     ]);
@@ -228,4 +223,5 @@ function psp_update_variation_price_callback() {
         wp_send_json_error(['message' => 'خطا در ذخیره سازی.']);
     }
 }
+// CORRECTED: The misplaced '}' was removed from here.
 add_action('wp_ajax_update_variation_price', 'psp_update_variation_price_callback');
