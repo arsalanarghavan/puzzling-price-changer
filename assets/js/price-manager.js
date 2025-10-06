@@ -15,7 +15,7 @@ jQuery(document).ready(function($) {
         var paginationContainer = $('#psp-pagination-container');
         var originalHtml = tableBody.html();
         
-        tableBody.html('<tr><td colspan="4"><span class="spinner is-active" style="float:right; margin: 10px;"></span></td></tr>');
+        tableBody.html('<tr><td colspan="4"><span class="spinner is-active" style="float:left; margin: 10px;"></span></td></tr>');
 
         var filterData = {
             nonce: psp_ajax_object.filter_nonce,
@@ -75,11 +75,11 @@ jQuery(document).ready(function($) {
         var pageNum = 1;
         
         // Extract page number from URL
-        var pagedMatch = pageUrl.match(/paged=(\d+)/) || pageUrl.match(/\/page\/(\d+)/);
+        var pagedMatch = pageUrl.match(/paged=(\d+)/);
         if (pagedMatch && pagedMatch[1]) {
             pageNum = parseInt(pagedMatch[1]);
         } else {
-            // Fallback for prev/next if no number in URL
+             // Fallback for prev/next if no number in URL
             var current = parseInt($('.page-numbers.current').text());
             if ($(this).hasClass('next')) {
                 pageNum = current + 1;

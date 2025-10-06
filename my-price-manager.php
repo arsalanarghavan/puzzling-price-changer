@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       تغییر قیمت‌ها
  * Description:       A page to manage all WooCommerce variable product prices using AJAX.
- * Version:           1.0.0
+ * Version:           0.5.1
  * Author:            Arsalan Arghavan
  */
 
@@ -30,7 +30,9 @@ function psp_render_admin_page() {
             $brands = get_terms(['taxonomy' => 'pwb-brand', 'hide_empty' => false]);
             if (!is_wp_error($brands) && !empty($brands)) {
                 echo '<select id="psp_brand_filter" name="psp_brand_filter" class="psp-filter-select"><option value="">همه برندها</option>';
-                foreach ($brands as $brand) echo '<option value="' . esc_attr($brand->slug) . '">' . esc_html($brand->name) . '</option>';
+                foreach ($brands as $brand) {
+                    echo '<option value="' . esc_attr($brand->slug) . '">' . esc_html($brand->name) . '</option>';
+                }
                 echo '</select>';
             }
             ?>
@@ -54,27 +56,48 @@ function psp_render_admin_page() {
             </tbody>
         </table>
         <div id="psp-pagination-container" class="psp-pagination">
-             <?php psp_get_pagination_callback(); // Initial pagination load ?>
+             <?php psp_get_pagination_callback(false); // Initial pagination load ?>
         </div>
     </div>
     <?php
 }
 
-// Function to fetch products and generate table rows
-function psp_get_filtered_products_callback($ajax = true) {
-    if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
-
+// Function to get query arguments based on POST data
+function psp_get_query_args() {
     $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
     $search_term = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
     $category_slug = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
     $brand_slug = isset($_POST['brand']) ? sanitize_text_field($_POST['brand']) : '';
 
-    $args = ['type' => 'variable', 'limit' => 50, 'page' => $paged, 'return' => 'ids', 's' => $search_term];
+    $args = [
+        'type' => 'variable',
+        'limit' => 50,
+        'page' => $paged,
+        's' => $search_term,
+    ];
+    
     $tax_query = ['relation' => 'AND'];
-    if (!empty($category_slug)) $tax_query[] = ['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $category_slug];
-    if (!empty($brand_slug)) $tax_query[] = ['taxonomy' => 'pwb-brand', 'field' => 'slug', 'terms' => $brand_slug];
-    if (count($tax_query) > 1) $args['tax_query'] = $tax_query;
+    if (!empty($category_slug)) {
+        $tax_query[] = ['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $category_slug];
+    }
+    if (!empty($brand_slug)) {
+        $tax_query[] = ['taxonomy' => 'pwb-brand', 'field' => 'slug', 'terms' => $brand_slug];
+    }
+    if (count($tax_query) > 1) {
+        $args['tax_query'] = $tax_query;
+    }
 
+    return $args;
+}
+
+
+// Function to fetch products and generate table rows
+function psp_get_filtered_products_callback($ajax = true) {
+    if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
+
+    $args = psp_get_query_args();
+    $args['return'] = 'ids';
+    
     $query = new WC_Product_Query($args);
     $product_ids = $query->get_products();
     
@@ -144,22 +167,19 @@ add_action('wp_ajax_psp_get_filtered_products', 'psp_get_filtered_products_callb
 function psp_get_pagination_callback($ajax = true) {
      if ($ajax) check_ajax_referer('psp_filter_nonce', 'nonce');
 
-    $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
-    $search_term = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-    $category_slug = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
-    $brand_slug = isset($_POST['brand']) ? sanitize_text_field($_POST['brand']) : '';
-
-    $args = ['type' => 'variable', 'limit' => 50, 'page' => $paged, 'return' => 'ids', 's' => $search_term];
-    $tax_query = ['relation' => 'AND'];
-    if (!empty($category_slug)) $tax_query[] = ['taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $category_slug];
-    if (!empty($brand_slug)) $tax_query[] = ['taxonomy' => 'pwb-brand', 'field' => 'slug', 'terms' => $brand_slug];
-    if (count($tax_query) > 1) $args['tax_query'] = $tax_query;
-    
+    $args = psp_get_query_args();
     $query = new WC_Product_Query($args);
     $total_products = $query->get_total();
     $num_pages = ceil($total_products / 50);
 
-    $pagination_html = paginate_links(['base' => admin_url('admin.php?page=steel_price_manager&paged=%#%'), 'format' => '%#%', 'prev_text' => '«', 'next_text' => '»', 'total' => $num_pages, 'current' => $paged]);
+    $pagination_html = paginate_links([
+        'base' => admin_url('admin.php?page=steel_price_manager') . '%_%',
+        'format' => '&paged=%#%',
+        'prev_text' => '«',
+        'next_text' => '»',
+        'total' => $num_pages,
+        'current' => $args['page'],
+    ]);
 
     if ($ajax) {
         wp_send_json_success(['html' => $pagination_html]);
@@ -172,8 +192,8 @@ add_action('wp_ajax_psp_get_pagination', 'psp_get_pagination_callback');
 // Enqueue scripts and styles
 function psp_enqueue_admin_scripts($hook) {
     if ('puzzling_page_steel_price_manager' != $hook) return;
-    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', [], '1.0.0');
-    wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '1.0.0', true);
+    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', [], '1.0.1');
+    wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '1.0.1', true);
     wp_localize_script('psp-admin-script', 'psp_ajax_object', [
         'ajax_url' => admin_url('admin-ajax.php'),
         'update_nonce' => wp_create_nonce('psp_update_price_nonce'),
@@ -196,10 +216,16 @@ function psp_update_variation_price_callback() {
     $price_type = isset($_POST['price_type']) && $_POST['price_type'] === 'sale' ? 'sale' : 'regular';
     $price = str_replace(',', '', $price);
 
-    if ($price_type === 'sale') $variation->set_sale_price($price);
-    else $variation->set_regular_price($price);
+    if ($price_type === 'sale') {
+        $variation->set_sale_price($price);
+    } else {
+        $variation->set_regular_price($price);
+    }
     
-    if ($variation->save()) wp_send_json_success(['message' => 'قیمت ذخیره شد.']);
-    else wp_send_json_error(['message' => 'خطا در ذخیره سازی.']);
+    if ($variation->save()) {
+        wp_send_json_success(['message' => 'قیمت ذخیره شد.']);
+    } else {
+        wp_send_json_error(['message' => 'خطا در ذخیره سازی.']);
+    }
 }
 add_action('wp_ajax_update_variation_price', 'psp_update_variation_price_callback');
