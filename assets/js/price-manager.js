@@ -1,5 +1,6 @@
 jQuery(document).ready(function($) {
 
+    // --- DOM Elements ---
     const tableBody = $('#psp-price-list-body');
     const paginationContainer = $('#psp-pagination-container');
     const categoryFilter = $('#psp_category_filter');
@@ -7,20 +8,28 @@ jQuery(document).ready(function($) {
     const searchInput = $('#psp_search_filter');
     const searchButton = $('#psp_search_button');
 
+    // --- Utility Functions ---
     const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     const unformatNumber = (str) => str.toString().replace(/[^0-9]/g, '');
+    
+    let debounceTimer;
+    const debounce = (callback, time) => {
+        window.clearTimeout(debounceTimer);
+        debounceTimer = window.setTimeout(callback, time);
+    };
 
+    // --- Core Functions ---
     function fetchProducts(page = 1) {
-        tableBody.html('<tr><td colspan="4"><span class="spinner is-active" style="float:right; margin: 10px;"></span></td></tr>');
-        paginationContainer.html('');
+        tableBody.html('<tr><td colspan="4" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
+        paginationContainer.empty();
 
         const filterData = {
             action: 'psp_get_products',
-            _ajax_nonce: psp_ajax_object.filter_nonce, // Corrected Nonce field name
+            _ajax_nonce: psp_ajax_object.filter_nonce,
             page: page,
             category: categoryFilter.val(),
             brand: brandFilter.val(),
-            search: searchInput.val()
+            search: searchInput.val().trim()
         };
 
         $.post(psp_ajax_object.ajax_url, filterData)
@@ -43,8 +52,15 @@ jQuery(document).ready(function($) {
     categoryFilter.on('change', () => fetchProducts(1));
     brandFilter.on('change', () => fetchProducts(1));
     searchButton.on('click', () => fetchProducts(1));
+    
+    searchInput.on('keyup', () => {
+        debounce(() => fetchProducts(1), 500); // Debounced search
+    });
     searchInput.on('keypress', (e) => {
-        if (e.which === 13) fetchProducts(1);
+        if (e.which === 13) {
+            e.preventDefault(); // Prevent form submission
+            fetchProducts(1);
+        }
     });
 
     paginationContainer.on('click', 'a.page-numbers', function(e) {
@@ -76,7 +92,7 @@ jQuery(document).ready(function($) {
 
         const priceData = {
             action: 'psp_update_price',
-            _ajax_nonce: psp_ajax_object.update_nonce, // Corrected Nonce field name
+            _ajax_nonce: psp_ajax_object.update_nonce,
             id: inputField.data('id'),
             price: unformatNumber(inputField.val()),
             price_type: inputField.data('price-type')
@@ -89,15 +105,14 @@ jQuery(document).ready(function($) {
                     saveStatus.addClass('success');
                 } else {
                     saveStatus.addClass('error');
-                    alert('خطا: ' + (response.data ? response.data.message : 'ناشناخته'));
+                    // Optionally show a more subtle error message instead of an alert
                 }
             })
             .fail(function() {
                 saveStatus.removeClass('saving').addClass('error');
-                alert('خطای ارتباط با سرور.');
             })
             .always(function() {
-                setTimeout(() => saveStatus.removeClass('success error'), 3000);
+                setTimeout(() => saveStatus.removeClass('success error'), 2500);
             });
     });
 });

@@ -20,15 +20,23 @@ add_action('admin_menu', 'psp_add_admin_menu');
 function psp_render_admin_page() {
     ?>
     <div class="wrap psp-wrap">
-        <h1><span class="dashicons-before dashicons-editor-table"></span>لیست قیمت محصولات</h1>
+        <h1><span class="dashicons dashicons-cart"></span>مدیریت قیمت محصولات</h1>
         <p>در این صفحه می‌توانید قیمت تمام محصولات و متغیرهای آن‌ها را به سرعت تغییر دهید. پس از تغییر قیمت، به صورت خودکار ذخیره می‌شود.</p>
 
-        <div class="psp-filters">
+        <div class="psp-filters-container">
             <?php
+            // Dropdown for categories
             wp_dropdown_categories([
-                'show_option_all' => 'همه دسته‌بندی‌ها', 'taxonomy' => 'product_cat', 'name' => 'psp_category_filter',
-                'id' => 'psp_category_filter', 'class' => 'psp-filter-select', 'hierarchical' => true, 'value_field' => 'slug'
+                'show_option_all' => 'همه دسته‌بندی‌ها',
+                'taxonomy'        => 'product_cat',
+                'name'            => 'psp_category_filter',
+                'id'              => 'psp_category_filter',
+                'class'           => 'psp-filter-select',
+                'hierarchical'    => true,
+                'value_field'     => 'slug'
             ]);
+
+            // Dropdown for brands
             $brands = get_terms(['taxonomy' => 'pwb-brand', 'hide_empty' => false]);
             if (!is_wp_error($brands) && !empty($brands)) {
                 echo '<select id="psp_brand_filter" name="psp_brand_filter" class="psp-filter-select"><option value="">همه برندها</option>';
@@ -40,22 +48,25 @@ function psp_render_admin_page() {
             ?>
             <div class="psp-search-wrapper">
                 <input type="text" id="psp_search_filter" name="psp_search_filter" class="psp-search-input" placeholder="جستجوی نام محصول...">
-                <button id="psp_search_button" class="button">جستجو</button>
+                <button id="psp_search_button" class="button button-primary">جستجو</button>
             </div>
         </div>
 
-        <table class="wp-list-table widefat fixed striped psp-table">
-            <thead>
-                <tr>
-                    <th class="product-name-col">نام محصول</th>
-                    <th class="attributes-col">ویژگی‌ها</th>
-                    <th class="price-col">قیمت (تومان)</th>
-                    <th class="price-col">قیمت با تخفیف (تومان)</th>
-                </tr>
-            </thead>
-            <tbody id="psp-price-list-body"></tbody>
-        </table>
-        <div class="psp-pagination-container" id="psp-pagination-container"></div>
+        <div class="psp-table-container">
+            <table class="wp-list-table widefat fixed striped psp-table">
+                <thead>
+                    <tr>
+                        <th class="product-name-col">نام محصول</th>
+                        <th class="attributes-col">ویژگی‌ها</th>
+                        <th class="price-col">قیمت (تومان)</th>
+                        <th class="price-col">قیمت با تخفیف (تومان)</th>
+                    </tr>
+                </thead>
+                <tbody id="psp-price-list-body">
+                    </tbody>
+            </table>
+        </div>
+        <div id="psp-pagination-container" class="psp-pagination-container"></div>
     </div>
     <?php
 }
