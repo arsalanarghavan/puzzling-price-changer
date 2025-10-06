@@ -16,7 +16,7 @@ jQuery(document).ready(function($) {
 
         const filterData = {
             action: 'psp_get_products',
-            nonce: psp_ajax_object.filter_nonce,
+            _ajax_nonce: psp_ajax_object.filter_nonce, // Corrected Nonce field name
             page: page,
             category: categoryFilter.val(),
             brand: brandFilter.val(),
@@ -50,7 +50,6 @@ jQuery(document).ready(function($) {
     paginationContainer.on('click', 'a.page-numbers', function(e) {
         e.preventDefault();
         const href = $(this).attr('href');
-        // Extract page number from format ?paged=X
         const pageNum = new URLSearchParams(href.slice(href.indexOf('?'))).get('paged') || 1;
         fetchProducts(pageNum);
     });
@@ -77,8 +76,8 @@ jQuery(document).ready(function($) {
 
         const priceData = {
             action: 'psp_update_price',
-            nonce: psp_ajax_object.update_nonce,
-            variation_id: inputField.data('variation-id'), // Correctly gets ID from input
+            _ajax_nonce: psp_ajax_object.update_nonce, // Corrected Nonce field name
+            id: inputField.data('id'),
             price: unformatNumber(inputField.val()),
             price_type: inputField.data('price-type')
         };
