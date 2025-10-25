@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       تغییر قیمت‌ها
  * Description:       A page to manage all WooCommerce product prices using AJAX.
- * Version:           0.3.0
- * Author:            Arsalan Arghavan (Rewritten by Assistant)
+ * Version:           1.0.0
+ * Author:            Arsalan Arghavan
  */
 
 if (!defined('ABSPATH')) {
@@ -60,6 +60,7 @@ function psp_render_admin_page() {
                         <th class="attributes-col">ویژگی‌ها</th>
                         <th class="price-col">قیمت (تومان)</th>
                         <th class="price-col">قیمت با تخفیف (تومان)</th>
+                        <th class="stock-col">موجودی</th>
                     </tr>
                 </thead>
                 <tbody id="psp-price-list-body">
@@ -120,6 +121,7 @@ function psp_ajax_get_products() {
                 foreach ($variations_data as $i => $variation_data) {
                     $variation = wc_get_product($variation_data['variation_id']);
                     if (!$variation) continue;
+                    $stock_status = $variation->get_stock_status();
                     ?>
                     <tr class="<?php echo ($i === 0) ? 'product-start' : ''; ?>">
                         <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
@@ -142,10 +144,20 @@ function psp_ajax_get_products() {
                                 <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
                             </div>
                         </td>
+                        <td>
+                            <div class="stock-wrapper">
+                                <select class="stock-status-select" data-id="<?php echo esc_attr($variation->get_id()); ?>">
+                                    <option value="instock" <?php selected($stock_status, 'instock'); ?>>موجود</option>
+                                    <option value="outofstock" <?php selected($stock_status, 'outofstock'); ?>>ناموجود</option>
+                                </select>
+                                <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
+                            </div>
+                        </td>
                     </tr>
                     <?php
                 }
             } else { // For simple products and other types
+                $stock_status = $product->get_stock_status();
                 ?>
                  <tr class="product-start">
                     <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
@@ -162,13 +174,22 @@ function psp_ajax_get_products() {
                             <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
                         </div>
                     </td>
+                    <td>
+                        <div class="stock-wrapper">
+                            <select class="stock-status-select" data-id="<?php echo esc_attr($product->get_id()); ?>">
+                                <option value="instock" <?php selected($stock_status, 'instock'); ?>>موجود</option>
+                                <option value="outofstock" <?php selected($stock_status, 'outofstock'); ?>>ناموجود</option>
+                            </select>
+                            <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
+                        </div>
+                    </td>
                 </tr>
                 <?php
             }
         }
         wp_reset_postdata();
     } else {
-        echo '<tr><td colspan="4">هیچ محصولی با این مشخصات یافت نشد.</td></tr>';
+        echo '<tr><td colspan="5">هیچ محصولی با این مشخصات یافت نشد.</td></tr>';
     }
     $products_html = ob_get_clean();
 
@@ -208,7 +229,26 @@ function psp_ajax_update_price() {
 }
 add_action('wp_ajax_psp_update_price', 'psp_ajax_update_price');
 
-// 6. Enqueue Scripts and Styles
+// 6. AJAX Handler for Updating Stock Status
+function psp_ajax_update_stock_status() {
+    check_ajax_referer('psp_update_price_nonce');
+
+    $product_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    if ($product_id <= 0) wp_send_json_error(['message' => 'شناسه نامعتبر است.']);
+
+    $product = wc_get_product($product_id);
+    if (!$product) wp_send_json_error(['message' => 'محصول یافت نشد.']);
+
+    $stock_status = isset($_POST['stock_status']) && in_array($_POST['stock_status'], ['instock', 'outofstock']) ? $_POST['stock_status'] : 'instock';
+    
+    $product->set_stock_status($stock_status);
+    $product->save();
+    
+    wp_send_json_success(['message' => 'وضعیت موجودی ذخیره شد.']);
+}
+add_action('wp_ajax_psp_update_stock_status', 'psp_ajax_update_stock_status');
+
+// 7. Enqueue Scripts and Styles
 function psp_enqueue_admin_scripts($hook) {
     if ('toplevel_page_puzzling_price_manager' != $hook) return;
     

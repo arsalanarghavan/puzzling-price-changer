@@ -20,7 +20,7 @@ jQuery(document).ready(function($) {
 
     // --- Core Functions ---
     function fetchProducts(page = 1) {
-        tableBody.html('<tr><td colspan="4" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
+        tableBody.html('<tr><td colspan="5" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
         paginationContainer.empty();
 
         const filterData = {
@@ -38,11 +38,11 @@ jQuery(document).ready(function($) {
                     tableBody.html(response.data.products_html);
                     paginationContainer.html(response.data.pagination_html);
                 } else {
-                    tableBody.html('<tr><td colspan="4">خطا در بارگذاری محصولات.</td></tr>');
+                    tableBody.html('<tr><td colspan="5">خطا در بارگذاری محصولات.</td></tr>');
                 }
             })
             .fail(function() {
-                tableBody.html('<tr><td colspan="4">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
+                tableBody.html('<tr><td colspan="5">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
             });
     }
 
@@ -106,6 +106,37 @@ jQuery(document).ready(function($) {
                 } else {
                     saveStatus.addClass('error');
                     // Optionally show a more subtle error message instead of an alert
+                }
+            })
+            .fail(function() {
+                saveStatus.removeClass('saving').addClass('error');
+            })
+            .always(function() {
+                setTimeout(() => saveStatus.removeClass('success error'), 2500);
+            });
+    });
+
+    // Stock status update handler
+    tableBody.on('change', '.stock-status-select', function() {
+        const selectField = $(this);
+        const saveStatus = selectField.closest('.stock-wrapper').find('.save-status');
+        
+        saveStatus.removeClass('success error').addClass('saving');
+
+        const stockData = {
+            action: 'psp_update_stock_status',
+            _ajax_nonce: psp_ajax_object.update_nonce,
+            id: selectField.data('id'),
+            stock_status: selectField.val()
+        };
+
+        $.post(psp_ajax_object.ajax_url, stockData)
+            .done(function(response) {
+                saveStatus.removeClass('saving');
+                if (response.success) {
+                    saveStatus.addClass('success');
+                } else {
+                    saveStatus.addClass('error');
                 }
             })
             .fail(function() {

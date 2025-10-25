@@ -107,9 +107,10 @@
 }
 
 /* --- Table Cell Content --- */
-.product-name-col { width: 32%; }
-.attributes-col { width: 38%; }
-.price-col { width: 15%; }
+.product-name-col { width: 28%; }
+.attributes-col { width: 34%; }
+.price-col { width: 13%; }
+.stock-col { width: 12%; }
 
 .attributes-cell {
     display: flex;
@@ -147,6 +148,29 @@
 }
 
 .variation-price-input:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 1px #007cba;
+    outline: none;
+}
+
+/* --- Stock Status Select --- */
+.stock-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.stock-status-select {
+    width: 140px;
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    transition: all 0.2s ease-in-out;
+}
+
+.stock-status-select:focus {
     border-color: #007cba;
     box-shadow: 0 0 0 1px #007cba;
     outline: none;
