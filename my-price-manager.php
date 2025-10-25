@@ -2,13 +2,49 @@
 /**
  * Plugin Name:       تغییر قیمت‌ها
  * Description:       صفحه مدیریت قیمت‌های محصولات ووکامرس با امکان تغییر موجودی
- * Version:           1.2.0
+ * Version:           1.2.7
  * Author:            Arsalan Arghavan
+ * Text Domain:       puzzling-price-changer
+ * Domain Path:       /languages
+ * Requires at least: 5.0
+ * Tested up to:      6.4
+ * Requires PHP:      7.4
+ * WC requires at least: 5.0
+ * WC tested up to:   8.5
  */
 
+// Prevent direct access
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Check if WooCommerce is active
+if (!in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
+    add_action('admin_notices', function() {
+        echo '<div class="notice notice-error"><p><strong>تغییر قیمت‌ها</strong> نیاز به ووکامرس دارد. لطفاً ابتدا ووکامرس را نصب و فعال کنید.</p></div>';
+    });
+    return;
+}
+
+// Include WordPress functions
+if (!function_exists('add_action')) {
+    require_once(ABSPATH . 'wp-includes/pluggable.php');
+}
+
+// Plugin initialization
+add_action('init', function() {
+    // Load plugin text domain for translations
+    load_plugin_textdomain('puzzling-price-changer', false, dirname(plugin_basename(__FILE__)) . '/languages');
+});
+
+// Plugin activation hook
+register_activation_hook(__FILE__, function() {
+    // Check if WooCommerce is active
+    if (!class_exists('WooCommerce')) {
+        deactivate_plugins(plugin_basename(__FILE__));
+        wp_die(__('این افزونه نیاز به ووکامرس دارد. لطفاً ابتدا ووکامرس را نصب و فعال کنید.', 'puzzling-price-changer'));
+    }
+});
 
 // 1. Add Admin Menu
 function psp_add_admin_menu() {
@@ -93,11 +129,18 @@ function psp_render_admin_page() {
 
 // 3. AJAX Handler for Getting Products using WP_Query (Safer Method)
 function psp_ajax_get_products() {
-    check_ajax_referer('psp_filter_nonce');
+    // Check nonce
+    if (!check_ajax_referer('psp_filter_nonce', false, false)) {
+        wp_send_json_error(['message' => 'Nonce verification failed']);
+        return;
+    }
 
     $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
     $search_term = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
     $posts_per_page = 50;
+    
+    // Debug log
+    error_log('PSP AJAX: Page = ' . $paged . ', Search = ' . $search_term);
 
     // Handle sort order
     $sort_option = isset($_POST['sort']) ? sanitize_text_field($_POST['sort']) : 'date_desc';
@@ -139,7 +182,6 @@ function psp_ajax_get_products() {
         's'              => $search_term,
         'orderby'        => $orderby,
         'order'          => $order,
-        'tax_query'      => ['relation' => 'AND'],
     ];
     
     // Add meta_key for price sorting
@@ -147,20 +189,25 @@ function psp_ajax_get_products() {
         $args['meta_key'] = '_regular_price';
     }
 
-    if (!empty($_POST['category'])) {
-        $args['tax_query'][] = [
-            'taxonomy' => 'product_cat',
-            'field'    => 'slug',
-            'terms'    => sanitize_text_field($_POST['category']),
-        ];
-    }
+    // Build tax_query only if we have taxonomy filters
+    if (!empty($_POST['category']) || !empty($_POST['brand'])) {
+        $args['tax_query'] = ['relation' => 'AND'];
+        
+        if (!empty($_POST['category'])) {
+            $args['tax_query'][] = [
+                'taxonomy' => 'product_cat',
+                'field'    => 'slug',
+                'terms'    => sanitize_text_field($_POST['category']),
+            ];
+        }
 
-    if (!empty($_POST['brand'])) {
-        $args['tax_query'][] = [
-            'taxonomy' => 'pwb-brand',
-            'field'    => 'slug',
-            'terms'    => sanitize_text_field($_POST['brand']),
-        ];
+        if (!empty($_POST['brand'])) {
+            $args['tax_query'][] = [
+                'taxonomy' => 'pwb-brand',
+                'field'    => 'slug',
+                'terms'    => sanitize_text_field($_POST['brand']),
+            ];
+        }
     }
     
     // Stock status filter - will be applied after query
@@ -262,14 +309,60 @@ function psp_ajax_get_products() {
     }
     $products_html = ob_get_clean();
 
-    $pagination_html = paginate_links([
-        'base' => '#%#%', 'format' => '?paged=%#%', 'current' => $paged,
-        'total' => $products_query->max_num_pages, 'prev_text' => '«', 'next_text' => '»',
-    ]);
+    $pagination_html = '';
+    if ($products_query->max_num_pages > 1) {
+        // Create custom pagination HTML
+        $pagination_html = '<div class="psp-pagination">';
+        
+        // Previous button
+        if ($paged > 1) {
+            $pagination_html .= '<a href="#" data-page="' . ($paged - 1) . '" class="page-numbers prev">« قبلی</a>';
+        }
+        
+        // Page numbers
+        $start_page = max(1, $paged - 2);
+        $end_page = min($products_query->max_num_pages, $paged + 2);
+        
+        if ($start_page > 1) {
+            $pagination_html .= '<a href="#" data-page="1" class="page-numbers">1</a>';
+            if ($start_page > 2) {
+                $pagination_html .= '<span class="page-numbers dots">...</span>';
+            }
+        }
+        
+        for ($i = $start_page; $i <= $end_page; $i++) {
+            $current_class = ($i == $paged) ? ' current' : '';
+            $pagination_html .= '<a href="#" data-page="' . $i . '" class="page-numbers' . $current_class . '">' . $i . '</a>';
+        }
+        
+        if ($end_page < $products_query->max_num_pages) {
+            if ($end_page < $products_query->max_num_pages - 1) {
+                $pagination_html .= '<span class="page-numbers dots">...</span>';
+            }
+            $pagination_html .= '<a href="#" data-page="' . $products_query->max_num_pages . '" class="page-numbers">' . $products_query->max_num_pages . '</a>';
+        }
+        
+        // Next button
+        if ($paged < $products_query->max_num_pages) {
+            $pagination_html .= '<a href="#" data-page="' . ($paged + 1) . '" class="page-numbers next">بعدی »</a>';
+        }
+        
+        $pagination_html .= '</div>';
+    }
 
-    wp_send_json_success(['products_html' => $products_html, 'pagination_html' => $pagination_html]);
+    // Debug: Log pagination info
+    error_log('PSP Pagination: Current page = ' . $paged . ', Total pages = ' . $products_query->max_num_pages);
+    
+    wp_send_json_success([
+        'products_html' => $products_html, 
+        'pagination_html' => $pagination_html,
+        'current_page' => $paged,
+        'total_pages' => $products_query->max_num_pages,
+        'total_products' => $products_query->found_posts
+    ]);
 }
 add_action('wp_ajax_psp_get_products', 'psp_ajax_get_products');
+add_action('wp_ajax_nopriv_psp_get_products', 'psp_ajax_get_products');
 
 // 5. AJAX Handler for Updating Prices
 function psp_ajax_update_price() {
@@ -319,17 +412,30 @@ add_action('wp_ajax_psp_update_stock_status', 'psp_ajax_update_stock_status');
 
 // 7. Enqueue Scripts and Styles
 function psp_enqueue_admin_scripts($hook) {
-    if ('toplevel_page_puzzling_price_manager' != $hook && 'toplevel_page_puzzling_price_manager' !== str_replace('puzzling_price_manager', '', $hook)) return;
+    // Debug: Log hook name
+    error_log('PSP Hook: ' . $hook);
     
-    wp_enqueue_style('dashicons');
-    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '6.0.3');
-    wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '6.0.3', true);
-    
-    wp_localize_script('psp-admin-script', 'psp_ajax_object', [
-        'ajax_url'     => admin_url('admin-ajax.php'),
-        'filter_nonce' => wp_create_nonce('psp_filter_nonce'),
-        'update_nonce' => wp_create_nonce('psp_update_price_nonce'),
-    ]);
+    // Check if we're on our plugin pages (main page or submenu page)
+    // Hook format: toplevel_page_{slug} for main menu, {parent-slug}_{submenu-slug} for submenu
+    if ($hook === 'toplevel_page_puzzling_price_manager' || 
+        $hook === 'تغییر-قیمت-پازلینگ_page_puzzling_price_manager' ||
+        $hook === 'toplevel_page_puzzling_price_bulk' ||
+        strpos($hook, 'puzzling_price') !== false) {
+        
+        error_log('PSP: Enqueuing scripts for hook: ' . $hook);
+        
+        wp_enqueue_style('dashicons');
+        wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '6.3.0');
+        wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '6.0.5', true);
+        
+        wp_localize_script('psp-admin-script', 'psp_ajax_object', [
+            'ajax_url'     => admin_url('admin-ajax.php'),
+            'filter_nonce' => wp_create_nonce('psp_filter_nonce'),
+            'update_nonce' => wp_create_nonce('psp_update_price_nonce'),
+        ]);
+        
+        error_log('PSP: Scripts enqueued successfully');
+    }
 }
 add_action('admin_enqueue_scripts', 'psp_enqueue_admin_scripts');
 

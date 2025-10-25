@@ -233,37 +233,663 @@
     transform: scale(1);
 }
 
-/* --- Pagination --- */
+/* --- Compact Modern Pagination --- */
 .psp-pagination-container {
-    margin-top: 25px;
-    text-align: left;
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.psp-pagination {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #f8f9fa;
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
 }
 
 .page-numbers {
-    display: inline-block;
-    padding: 8px 16px;
-    margin: 0 3px;
-    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    margin: 0;
+    border: none;
     text-decoration: none;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    color: #555;
-    background-color: #fff;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    color: #6c757d;
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 28px;
+    height: 28px;
+    text-align: center;
+    cursor: pointer;
 }
 
 .page-numbers:hover {
-    background-color: #f0f0f0;
-    border-color: #bbb;
+    background-color: #007cba;
+    color: #fff;
 }
 
 .page-numbers.current {
     background-color: #007cba;
     color: #fff;
-    border-color: #007cba;
     font-weight: 600;
+    cursor: default;
 }
 
 .page-numbers.dots {
-    border: none;
     background: transparent;
+    cursor: default;
+    color: #adb5bd;
+    font-weight: 600;
+    padding: 4px 2px;
+}
+
+.page-numbers.dots:hover {
+    background: transparent;
+    color: #adb5bd;
+}
+
+.page-numbers.prev,
+.page-numbers.next {
+    font-weight: 600;
+    padding: 4px 8px;
+    background-color: #e9ecef;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.page-numbers.prev:hover,
+.page-numbers.next:hover {
+    background-color: #007cba;
+    color: #fff;
+    border-color: #007cba;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .psp-pagination {
+        gap: 1px;
+        padding: 3px;
+    }
+    
+    .page-numbers {
+        padding: 3px 6px;
+        min-width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+    
+    .page-numbers.prev,
+    .page-numbers.next {
+        padding: 3px 6px;
+    }
+}
+
+/* --- Bulk Price Bump Styles --- */
+.psp-bulk-wrap {
+    margin: 20px 20px 20px 0;
+    background-color: #f9f9f9;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.psp-bulk-header {
+    margin-bottom: 30px;
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.psp-bulk-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.psp-bulk-header p {
+    font-size: 16px;
+    margin: 0;
+    opacity: 0.9;
+}
+
+.psp-bulk-content {
+    display: grid;
+    gap: 25px;
+}
+
+.psp-bulk-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e1e5e9;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.psp-bulk-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.psp-card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px 25px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.psp-card-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.psp-card-header p {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 0;
+}
+
+.psp-bulk-form {
+    padding: 25px;
+}
+
+.psp-form-section {
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.psp-form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.psp-form-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+    margin: 0 0 20px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #007cba;
+    display: inline-block;
+}
+
+.psp-form-row {
+    margin-bottom: 20px;
+}
+
+.psp-form-row:last-child {
+    margin-bottom: 0;
+}
+
+.psp-form-label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.psp-form-input,
+.psp-form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.psp-form-input:focus,
+.psp-form-textarea:focus {
+    outline: none;
+    border-color: #007cba;
+    box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
+}
+
+.psp-form-input-small {
+    width: 150px;
+    margin-left: 10px;
+}
+
+.psp-form-description {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.psp-radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.psp-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 10px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.psp-radio-item:hover {
+    border-color: #007cba;
+    background: #f8f9ff;
+}
+
+.psp-radio-item input[type="radio"] {
+    margin: 0;
+}
+
+.psp-radio-item input[type="radio"]:checked + .psp-radio-text {
+    color: #007cba;
+    font-weight: 600;
+}
+
+.psp-radio-item:has(input[type="radio"]:checked) {
+    border-color: #007cba;
+    background: #f8f9ff;
+}
+
+.psp-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 10px 0;
+}
+
+.psp-checkbox-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.psp-checkbox-text {
+    font-weight: 500;
+    color: #495057;
+}
+
+.psp-form-inline {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.psp-form-group {
+    flex: 1;
+}
+
+.psp-file-upload {
+    position: relative;
+    margin-top: 8px;
+}
+
+.psp-file-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.psp-file-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.psp-file-label:hover {
+    border-color: #007cba;
+    background: #f0f8ff;
+    color: #007cba;
+}
+
+.psp-file-text {
+    font-weight: 500;
+}
+
+.psp-form-actions {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.psp-submit-btn {
+    padding: 12px 30px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.psp-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 124, 186, 0.3);
+}
+
+.psp-bulk-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.psp-inline-form {
+    display: inline-block;
+}
+
+.psp-cancel-btn,
+.psp-run-now-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.psp-cancel-btn:hover,
+.psp-run-now-btn:hover {
+    transform: translateY(-1px);
+}
+
+.psp-log-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007cba;
+}
+
+.psp-log-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.psp-log-link {
+    color: #007cba;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.psp-log-link:hover {
+    background: #007cba;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* Status Card */
+.psp-status-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e1e5e9;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.psp-status-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 20px 25px;
+}
+
+.psp-status-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.psp-status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.psp-badge-running {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.psp-badge-queued {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.psp-status-content {
+    padding: 25px;
+}
+
+.psp-progress-section {
+    margin-bottom: 25px;
+}
+
+.psp-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.psp-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007cba 0%, #00a0d2 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.psp-progress-text {
+    text-align: center;
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.psp-status-details {
+    display: grid;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.psp-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.psp-status-item:last-child {
+    border-bottom: none;
+}
+
+.psp-status-label {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.psp-status-value {
+    font-weight: 600;
+    color: #495057;
+}
+
+.psp-status-footer {
+    padding-top: 15px;
+    border-top: 1px solid #f1f3f4;
+    text-align: center;
+}
+
+.psp-status-footer p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Tools Card */
+.psp-tools-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e1e5e9;
+}
+
+.psp-tool-item {
+    padding: 25px;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.psp-tool-item:last-child {
+    border-bottom: none;
+}
+
+.psp-tool-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.psp-tool-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.psp-tool-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.psp-badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.psp-tool-item p {
+    color: #6c757d;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.psp-tool-form {
+    margin: 0;
+}
+
+.psp-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.psp-tool-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Responsive Design for Bulk */
+@media (max-width: 768px) {
+    .psp-bulk-wrap {
+        margin: 10px;
+        padding: 15px;
+    }
+    
+    .psp-bulk-header h1 {
+        font-size: 24px;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .psp-radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .psp-form-inline {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .psp-bulk-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .psp-status-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .psp-status-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
 }

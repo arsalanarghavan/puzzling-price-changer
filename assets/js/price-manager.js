@@ -30,6 +30,8 @@ jQuery(document).ready(function($) {
 
     // --- Core Functions ---
     function fetchProducts(page = 1) {
+        console.log('=== fetchProducts called with page:', page, '===');
+        
         tableBody.html('<tr><td colspan="5" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
         paginationContainer.empty();
 
@@ -46,17 +48,32 @@ jQuery(document).ready(function($) {
         
         // Debug: log filter data
         console.log('Filter Data:', filterData);
+        console.log('AJAX URL:', psp_ajax_object.ajax_url);
 
         $.post(psp_ajax_object.ajax_url, filterData)
             .done(function(response) {
+                console.log('=== AJAX Response ===');
+                console.log('Response:', response);
+                console.log('Success:', response.success);
+                console.log('Data:', response.data);
+                
                 if (response.success) {
                     tableBody.html(response.data.products_html);
                     paginationContainer.html(response.data.pagination_html);
+                    console.log('Products loaded, pagination updated');
+                    console.log('Current page:', response.data.current_page);
+                    console.log('Total pages:', response.data.total_pages);
                 } else {
-                    tableBody.html('<tr><td colspan="5">خطا در بارگذاری محصولات.</td></tr>');
+                    console.error('AJAX Error:', response);
+                    tableBody.html('<tr><td colspan="5">خطا در بارگذاری محصولات: ' + (response.data || 'نامشخص') + '</td></tr>');
                 }
             })
-            .fail(function() {
+            .fail(function(xhr, status, error) {
+                console.error('=== AJAX Failed ===');
+                console.error('XHR:', xhr);
+                console.error('Status:', status);
+                console.error('Error:', error);
+                console.error('Response Text:', xhr.responseText);
                 tableBody.html('<tr><td colspan="5">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
             });
     }
@@ -80,11 +97,21 @@ jQuery(document).ready(function($) {
         }
     });
 
-    paginationContainer.on('click', 'a.page-numbers', function(e) {
+    // Simple pagination click handler
+    $(document).on('click', '.page-numbers', function(e) {
         e.preventDefault();
-        const href = $(this).attr('href');
-        const pageNum = new URLSearchParams(href.slice(href.indexOf('?'))).get('paged') || 1;
-        fetchProducts(pageNum);
+        e.stopPropagation();
+        
+        const $this = $(this);
+        const pageNum = $this.data('page');
+        
+        console.log('Pagination clicked, page:', pageNum);
+        
+        if (pageNum && pageNum > 0) {
+            fetchProducts(pageNum);
+        } else {
+            console.error('Invalid page number:', pageNum);
+        }
     });
 
     tableBody.on('input', '.variation-price-input', function() {
