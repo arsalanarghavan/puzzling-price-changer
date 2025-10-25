@@ -44,7 +44,7 @@
 
 .psp-filter-select,
 .psp-search-input {
-    min-width: 220px;
+    min-width: 180px;
     height: 40px;
     border: 1px solid #ddd;
     border-radius: 6px;
@@ -52,6 +52,11 @@
     background-color: #fff;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.psp-search-input {
+    min-width: 250px;
 }
 
 .psp-filter-select:focus,
@@ -95,7 +100,7 @@
 }
 
 .psp-table tr.product-start td {
-    border-top: 2px solid #a7cde8; /* A subtle blue highlight for new products */
+    border-top: 2px solid #a7cde8; /* هایلایت آبی برای محصولات جدید */
 }
 
 .psp-table tr:first-child td {
@@ -197,23 +202,32 @@
 }
 
 .status-icon::before {
-    font-family: "dashicons";
+    font-family: "dashicons" !important;
+    speak: never;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     content: '';
     opacity: 0;
     transition: opacity 0.3s ease, transform 0.3s ease;
-    font-size: 22px;
+    font-size: 20px;
     transform: scale(0.8);
+    display: inline-block;
 }
 
 .save-status.success .status-icon::before {
-    content: "\\f147";
+    content: "\f147";
     color: #27ae60;
     opacity: 1;
     transform: scale(1);
 }
 
 .save-status.error .status-icon::before {
-    content: "\\f158";
+    content: "\f158";
     color: #c0392b;
     opacity: 1;
     transform: scale(1);

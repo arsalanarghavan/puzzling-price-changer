@@ -5,8 +5,18 @@ jQuery(document).ready(function($) {
     const paginationContainer = $('#psp-pagination-container');
     const categoryFilter = $('#psp_category_filter');
     const brandFilter = $('#psp_brand_filter');
+    const stockFilter = $('#psp_stock_filter');
+    const sortFilter = $('#psp_sort_filter');
     const searchInput = $('#psp_search_filter');
     const searchButton = $('#psp_search_button');
+    
+    // Debug: Check if filters exist
+    console.log('Filters found:', {
+        category: categoryFilter.length,
+        brand: brandFilter.length,
+        stock: stockFilter.length,
+        sort: sortFilter.length
+    });
 
     // --- Utility Functions ---
     const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -29,8 +39,13 @@ jQuery(document).ready(function($) {
             page: page,
             category: categoryFilter.val(),
             brand: brandFilter.val(),
+            stock_status: stockFilter.val(),
+            sort: sortFilter.val(),
             search: searchInput.val().trim()
         };
+        
+        // Debug: log filter data
+        console.log('Filter Data:', filterData);
 
         $.post(psp_ajax_object.ajax_url, filterData)
             .done(function(response) {
@@ -51,14 +66,16 @@ jQuery(document).ready(function($) {
 
     categoryFilter.on('change', () => fetchProducts(1));
     brandFilter.on('change', () => fetchProducts(1));
+    stockFilter.on('change', () => fetchProducts(1));
+    sortFilter.on('change', () => fetchProducts(1));
     searchButton.on('click', () => fetchProducts(1));
     
     searchInput.on('keyup', () => {
-        debounce(() => fetchProducts(1), 500); // Debounced search
+        debounce(() => fetchProducts(1), 500); // جستجوی با تأخیر
     });
     searchInput.on('keypress', (e) => {
         if (e.which === 13) {
-            e.preventDefault(); // Prevent form submission
+            e.preventDefault(); // جلوگیری از ارسال فرم
             fetchProducts(1);
         }
     });

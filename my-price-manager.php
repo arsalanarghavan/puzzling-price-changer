@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       تغییر قیمت‌ها
- * Description:       A page to manage all WooCommerce product prices using AJAX.
- * Version:           1.0.0
+ * Description:       صفحه مدیریت قیمت‌های محصولات ووکامرس با امکان تغییر موجودی
+ * Version:           1.2.0
  * Author:            Arsalan Arghavan
  */
 
@@ -12,7 +12,9 @@ if (!defined('ABSPATH')) {
 
 // 1. Add Admin Menu
 function psp_add_admin_menu() {
-    add_menu_page('پازلینگ', 'پازلینگ', 'manage_woocommerce', 'puzzling_price_manager', 'psp_render_admin_page', 'dashicons-admin-generic', 55);
+    add_menu_page('تغییر قیمت پازلینگ', 'تغییر قیمت پازلینگ', 'manage_woocommerce', 'puzzling_price_manager', 'psp_render_admin_page', 'dashicons-admin-generic', 55);
+    add_submenu_page('puzzling_price_manager', 'تغییر قیمت', 'تغییر قیمت', 'manage_woocommerce', 'puzzling_price_manager');
+    add_submenu_page('puzzling_price_manager', 'تغییر قیمت گروهی', 'تغییر قیمت گروهی', 'manage_woocommerce', 'puzzling_price_bulk', 'psp_render_bulk_page');
 }
 add_action('admin_menu', 'psp_add_admin_menu');
 
@@ -45,6 +47,23 @@ function psp_render_admin_page() {
                 }
                 echo '</select>';
             }
+            
+            // Stock status filter
+            echo '<select id="psp_stock_filter" name="psp_stock_filter" class="psp-filter-select">
+                <option value="">همه وضعیت‌های موجودی</option>
+                <option value="instock">فقط موجود</option>
+                <option value="outofstock">فقط ناموجود</option>
+            </select>';
+            
+            // Sort order filter
+            echo '<select id="psp_sort_filter" name="psp_sort_filter" class="psp-filter-select">
+                <option value="date_desc">جدیدترین</option>
+                <option value="date_asc">قدیمی‌ترین</option>
+                <option value="name_asc">الفبا (صعودی)</option>
+                <option value="name_desc">الفبا (نزولی)</option>
+                <option value="price_asc">قیمت (کم به زیاد)</option>
+                <option value="price_desc">قیمت (زیاد به کم)</option>
+            </select>';
             ?>
             <div class="psp-search-wrapper">
                 <input type="text" id="psp_search_filter" name="psp_search_filter" class="psp-search-input" placeholder="جستجوی نام محصول...">
@@ -80,16 +99,53 @@ function psp_ajax_get_products() {
     $search_term = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
     $posts_per_page = 50;
 
+    // Handle sort order
+    $sort_option = isset($_POST['sort']) ? sanitize_text_field($_POST['sort']) : 'date_desc';
+    $orderby = 'date';
+    $order = 'DESC';
+    
+    switch ($sort_option) {
+        case 'date_asc':
+            $orderby = 'date';
+            $order = 'ASC';
+            break;
+        case 'name_asc':
+            $orderby = 'title';
+            $order = 'ASC';
+            break;
+        case 'name_desc':
+            $orderby = 'title';
+            $order = 'DESC';
+            break;
+        case 'price_asc':
+            $orderby = 'meta_value_num';
+            $order = 'ASC';
+            break;
+        case 'price_desc':
+            $orderby = 'meta_value_num';
+            $order = 'DESC';
+            break;
+        default: // date_desc
+            $orderby = 'date';
+            $order = 'DESC';
+            break;
+    }
+
     $args = [
         'post_type'      => 'product',
         'post_status'    => 'publish',
         'posts_per_page' => $posts_per_page,
         'paged'          => $paged,
         's'              => $search_term,
-        'orderby'        => 'date',
-        'order'          => 'DESC',
+        'orderby'        => $orderby,
+        'order'          => $order,
         'tax_query'      => ['relation' => 'AND'],
     ];
+    
+    // Add meta_key for price sorting
+    if (strpos($sort_option, 'price') !== false) {
+        $args['meta_key'] = '_regular_price';
+    }
 
     if (!empty($_POST['category'])) {
         $args['tax_query'][] = [
@@ -106,6 +162,9 @@ function psp_ajax_get_products() {
             'terms'    => sanitize_text_field($_POST['brand']),
         ];
     }
+    
+    // Stock status filter - will be applied after query
+    $stock_status_filter = !empty($_POST['stock_status']) ? sanitize_text_field($_POST['stock_status']) : '';
 
     $products_query = new WP_Query($args);
 
@@ -122,6 +181,11 @@ function psp_ajax_get_products() {
                     $variation = wc_get_product($variation_data['variation_id']);
                     if (!$variation) continue;
                     $stock_status = $variation->get_stock_status();
+                    
+                    // Apply stock filter if set
+                    if (!empty($stock_status_filter) && $stock_status !== $stock_status_filter) {
+                        continue;
+                    }
                     ?>
                     <tr class="<?php echo ($i === 0) ? 'product-start' : ''; ?>">
                         <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
@@ -158,6 +222,11 @@ function psp_ajax_get_products() {
                 }
             } else { // For simple products and other types
                 $stock_status = $product->get_stock_status();
+                
+                // Apply stock filter if set
+                if (!empty($stock_status_filter) && $stock_status !== $stock_status_filter) {
+                    continue;
+                }
                 ?>
                  <tr class="product-start">
                     <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
@@ -250,9 +319,10 @@ add_action('wp_ajax_psp_update_stock_status', 'psp_ajax_update_stock_status');
 
 // 7. Enqueue Scripts and Styles
 function psp_enqueue_admin_scripts($hook) {
-    if ('toplevel_page_puzzling_price_manager' != $hook) return;
+    if ('toplevel_page_puzzling_price_manager' != $hook && 'toplevel_page_puzzling_price_manager' !== str_replace('puzzling_price_manager', '', $hook)) return;
     
-    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', [], '6.0.3');
+    wp_enqueue_style('dashicons');
+    wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '6.0.3');
     wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '6.0.3', true);
     
     wp_localize_script('psp-admin-script', 'psp_ajax_object', [
@@ -262,3 +332,24 @@ function psp_enqueue_admin_scripts($hook) {
     ]);
 }
 add_action('admin_enqueue_scripts', 'psp_enqueue_admin_scripts');
+
+// Initialize bulk price bump
+function psp_init_bulk_price_bump() {
+    if (file_exists(__DIR__ . '/woo-bulk-price-bump.php') && !class_exists('XX_Woo_Bulk_Price_Bump')) {
+        include_once __DIR__ . '/woo-bulk-price-bump.php';
+    }
+    
+    if (class_exists('XX_Woo_Bulk_Price_Bump')) {
+        $GLOBALS['xx_woo_bulk_price_bump'] = new XX_Woo_Bulk_Price_Bump();
+    }
+}
+add_action('plugins_loaded', 'psp_init_bulk_price_bump');
+
+// Render function for bulk price page
+function psp_render_bulk_page() {
+    if (isset($GLOBALS['xx_woo_bulk_price_bump']) && is_object($GLOBALS['xx_woo_bulk_price_bump'])) {
+        $GLOBALS['xx_woo_bulk_price_bump']->page();
+    } else {
+        echo '<div class="wrap"><h1>تغییر قیمت گروهی</h1><p>خطا در بارگذاری ماژول تغییر قیمت گروهی</p></div>';
+    }
+}
