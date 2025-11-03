@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       تغییر قیمت‌ها
  * Description:       صفحه مدیریت قیمت‌های محصولات ووکامرس با امکان تغییر موجودی
- * Version:           1.2.7
+ * Version:           2.3.1
  * Author:            Arsalan Arghavan
  * Text Domain:       puzzling-price-changer
  * Domain Path:       /languages
@@ -107,10 +107,12 @@ function psp_render_admin_page() {
             </div>
         </div>
 
+        <!-- Desktop Table View -->
         <div class="psp-table-container">
             <table class="wp-list-table widefat fixed striped psp-table">
                 <thead>
                     <tr>
+                        <th class="product-image-col">تصویر</th>
                         <th class="product-name-col">نام محصول</th>
                         <th class="attributes-col">ویژگی‌ها</th>
                         <th class="price-col">قیمت (تومان)</th>
@@ -122,6 +124,11 @@ function psp_render_admin_page() {
                     </tbody>
             </table>
         </div>
+        
+        <!-- Mobile Card View -->
+        <div class="psp-mobile-view" id="psp-mobile-list-body" style="display:none;">
+        </div>
+        
         <div id="psp-pagination-container" class="psp-pagination-container"></div>
     </div>
     <?php
@@ -235,27 +242,30 @@ function psp_ajax_get_products() {
                     }
                     ?>
                     <tr class="<?php echo ($i === 0) ? 'product-start' : ''; ?>">
-                        <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
-                        <td class="attributes-cell">
+                        <td class="product-image-cell">
+                            <?php echo $variation->get_image('thumbnail', ['class' => 'psp-product-thumbnail']); ?>
+                        </td>
+                        <td data-label="نام محصول"><strong><?php echo esc_html($product->get_name()); ?></strong></td>
+                        <td class="attributes-cell" data-label="ویژگی‌ها">
                             <?php foreach ($variation_data['attributes'] as $attr_key => $term_slug) {
                                 $taxonomy = str_replace('attribute_', '', urldecode($attr_key));
                                 $term = get_term_by('slug', $term_slug, $taxonomy);
                                 echo '<span class="attribute-tag">' . wc_attribute_label($taxonomy) . ': <strong>' . ($term ? esc_html($term->name) : esc_html($term_slug)) . '</strong></span>';
                             } ?>
                         </td>
-                        <td>
+                        <td data-label="قیمت (تومان)">
                             <div class="price-wrapper">
                                 <input type="text" class="variation-price-input" value="<?php echo esc_attr($variation->get_regular_price() ? number_format($variation->get_regular_price()) : ''); ?>" data-price-type="regular" data-id="<?php echo esc_attr($variation->get_id()); ?>">
                                 <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
                             </div>
                         </td>
-                        <td>
+                        <td data-label="قیمت با تخفیف (تومان)">
                             <div class="price-wrapper">
                                 <input type="text" class="variation-price-input" value="<?php echo esc_attr($variation->get_sale_price() ? number_format($variation->get_sale_price()) : ''); ?>" data-price-type="sale" data-id="<?php echo esc_attr($variation->get_id()); ?>">
                                 <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
                             </div>
                         </td>
-                        <td>
+                        <td data-label="موجودی">
                             <div class="stock-wrapper">
                                 <select class="stock-status-select" data-id="<?php echo esc_attr($variation->get_id()); ?>">
                                     <option value="instock" <?php selected($stock_status, 'instock'); ?>>موجود</option>
@@ -276,21 +286,24 @@ function psp_ajax_get_products() {
                 }
                 ?>
                  <tr class="product-start">
-                    <td><strong><?php echo esc_html($product->get_name()); ?></strong></td>
-                    <td class="attributes-cell"><span class="attribute-tag">محصول ساده</span></td>
-                    <td>
+                    <td class="product-image-cell">
+                        <?php echo $product->get_image('thumbnail', ['class' => 'psp-product-thumbnail']); ?>
+                    </td>
+                    <td data-label="نام محصول"><strong><?php echo esc_html($product->get_name()); ?></strong></td>
+                    <td class="attributes-cell" data-label="ویژگی‌ها"><span class="attribute-tag">محصول ساده</span></td>
+                    <td data-label="قیمت (تومان)">
                         <div class="price-wrapper">
                             <input type="text" class="variation-price-input" value="<?php echo esc_attr($product->get_regular_price() ? number_format($product->get_regular_price()) : ''); ?>" data-price-type="regular" data-id="<?php echo esc_attr($product->get_id()); ?>">
                             <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="قیمت با تخفیف (تومان)">
                         <div class="price-wrapper">
                             <input type="text" class="variation-price-input" value="<?php echo esc_attr($product->get_sale_price() ? number_format($product->get_sale_price()) : ''); ?>" data-price-type="sale" data-id="<?php echo esc_attr($product->get_id()); ?>">
                             <span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="موجودی">
                         <div class="stock-wrapper">
                             <select class="stock-status-select" data-id="<?php echo esc_attr($product->get_id()); ?>">
                                 <option value="instock" <?php selected($stock_status, 'instock'); ?>>موجود</option>
@@ -305,7 +318,7 @@ function psp_ajax_get_products() {
         }
         wp_reset_postdata();
     } else {
-        echo '<tr><td colspan="5">هیچ محصولی با این مشخصات یافت نشد.</td></tr>';
+        echo '<tr><td colspan="6">هیچ محصولی با این مشخصات یافت نشد.</td></tr>';
     }
     $products_html = ob_get_clean();
 
@@ -425,8 +438,8 @@ function psp_enqueue_admin_scripts($hook) {
         error_log('PSP: Enqueuing scripts for hook: ' . $hook);
         
         wp_enqueue_style('dashicons');
-        wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '6.3.0');
-        wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '6.0.5', true);
+        wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '2.3.1');
+        wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '2.3.1', true);
         
         wp_localize_script('psp-admin-script', 'psp_ajax_object', [
             'ajax_url'     => admin_url('admin-ajax.php'),

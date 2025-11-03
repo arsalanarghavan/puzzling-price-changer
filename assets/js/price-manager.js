@@ -2,6 +2,7 @@ jQuery(document).ready(function($) {
 
     // --- DOM Elements ---
     const tableBody = $('#psp-price-list-body');
+    const mobileBody = $('#psp-mobile-list-body');
     const paginationContainer = $('#psp-pagination-container');
     const categoryFilter = $('#psp_category_filter');
     const brandFilter = $('#psp_brand_filter');
@@ -9,14 +10,6 @@ jQuery(document).ready(function($) {
     const sortFilter = $('#psp_sort_filter');
     const searchInput = $('#psp_search_filter');
     const searchButton = $('#psp_search_button');
-    
-    // Debug: Check if filters exist
-    console.log('Filters found:', {
-        category: categoryFilter.length,
-        brand: brandFilter.length,
-        stock: stockFilter.length,
-        sort: sortFilter.length
-    });
 
     // --- Utility Functions ---
     const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -27,12 +20,128 @@ jQuery(document).ready(function($) {
         window.clearTimeout(debounceTimer);
         debounceTimer = window.setTimeout(callback, time);
     };
-
+    
+    // Reattach event handlers after mobile conversion
+    function attachMobileEventHandlers() {
+        // Event handlers are already delegated via $(document).on()
+        // Just ensure original values are stored
+        $('.psp-mobile-field-content .variation-price-input').each(function() {
+            const $input = $(this);
+            if (!$input.data('original-value')) {
+                $input.data('original-value', unformatNumber($input.val()));
+            }
+        });
+        
+        $('.psp-mobile-field-content .stock-status-select').each(function() {
+            const $select = $(this);
+            if (!$select.data('original-value')) {
+                $select.data('original-value', $select.val());
+            }
+        });
+    }
+    
+    // Convert table to mobile cards
+    function convertToMobile(force = false) {
+        const width = $(window).width();
+        const isDesktop = width > 768;
+        
+        // Store current view state
+        if (typeof convertToMobile.lastView === 'undefined') {
+            convertToMobile.lastView = isDesktop ? 'desktop' : 'mobile';
+        }
+        
+        if (isDesktop) {
+            // Desktop view
+            mobileBody.hide();
+            tableBody.show();
+            convertToMobile.lastView = 'desktop';
+            return;
+        }
+        
+        // Mobile view - check if we need to rebuild
+        if (!force && convertToMobile.lastView === 'mobile' && mobileBody.find('.psp-mobile-card').length > 0) {
+            // Already in mobile view, just show it
+            mobileBody.show();
+            tableBody.hide();
+            return;
+        }
+        
+        mobileBody.show();
+        tableBody.hide();
+        mobileBody.empty(); // Clear first
+        convertToMobile.lastView = 'mobile';
+        
+        tableBody.find('tr').each(function() {
+            const $row = $(this);
+            const $cells = $row.find('td');
+            
+            if ($cells.length < 6) return; // Skip empty/error rows
+            
+            // Clone wrapper divs from table (price-wrapper and stock-wrapper) to keep original in DOM
+            const $regularPriceWrapper = $cells.eq(3).find('.price-wrapper').clone(true, true);
+            const $salePriceWrapper = $cells.eq(4).find('.price-wrapper').clone(true, true);
+            const $stockWrapper = $cells.eq(5).find('.stock-wrapper').clone(true, true);
+            
+            // Get image
+            const $image = $cells.eq(0).find('img');
+            
+            // Get attributes
+            const $attrs = $cells.eq(2).clone(true);
+            $attrs.find('.attribute-tag').removeClass('attribute-tag').addClass('psp-mobile-tag');
+            
+            // Add mobile classes to cloned wrappers and elements
+            $regularPriceWrapper.addClass('psp-mobile-wrapper');
+            $salePriceWrapper.addClass('psp-mobile-wrapper');
+            $stockWrapper.addClass('psp-mobile-wrapper');
+            
+            $regularPriceWrapper.find('.variation-price-input').addClass('psp-mobile-input');
+            $salePriceWrapper.find('.variation-price-input').addClass('psp-mobile-input');
+            $stockWrapper.find('.stock-status-select').addClass('psp-mobile-select');
+            $regularPriceWrapper.find('.save-status').addClass('psp-mobile-status');
+            $salePriceWrapper.find('.save-status').addClass('psp-mobile-status');
+            $stockWrapper.find('.save-status').addClass('psp-mobile-status');
+            
+            // Build mobile card
+            const $card = $('<div class="psp-mobile-card"></div>');
+            const $header = $('<div class="psp-mobile-card-header"></div>').append($image.clone());
+            const $body = $('<div class="psp-mobile-card-body"></div>');
+            
+            // Product name
+            const $nameField = $('<div class="psp-mobile-field"></div>')
+                .append('<div class="psp-mobile-label">نام محصول</div>')
+                .append('<div>' + $cells.eq(1).text().trim() + '</div>');
+            
+            // Attributes
+            const $attrsField = $('<div class="psp-mobile-field"></div>')
+                .append('<div class="psp-mobile-label">ویژگی‌ها</div>')
+                .append('<div class="psp-mobile-tags">' + $attrs.html() + '</div>');
+            
+            // Regular price - use cloned wrapper
+            const $regularField = $('<div class="psp-mobile-field"></div>')
+                .append('<div class="psp-mobile-label">قیمت (تومان)</div>')
+                .append($('<div class="psp-mobile-field-content"></div>').append($regularPriceWrapper));
+            
+            // Sale price - use cloned wrapper
+            const $saleField = $('<div class="psp-mobile-field"></div>')
+                .append('<div class="psp-mobile-label">قیمت با تخفیف (تومان)</div>')
+                .append($('<div class="psp-mobile-field-content"></div>').append($salePriceWrapper));
+            
+            // Stock - use cloned wrapper
+            const $stockField = $('<div class="psp-mobile-field"></div>')
+                .append('<div class="psp-mobile-label">موجودی</div>')
+                .append($('<div class="psp-mobile-field-content"></div>').append($stockWrapper));
+            
+            $body.append($nameField).append($attrsField).append($regularField).append($saleField).append($stockField);
+            $card.append($header).append($body);
+            mobileBody.append($card);
+        });
+        
+        attachMobileEventHandlers();
+    }
+    
     // --- Core Functions ---
     function fetchProducts(page = 1) {
-        console.log('=== fetchProducts called with page:', page, '===');
-        
-        tableBody.html('<tr><td colspan="5" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
+        tableBody.html('<tr><td colspan="6" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
         paginationContainer.empty();
 
         const filterData = {
@@ -45,36 +154,20 @@ jQuery(document).ready(function($) {
             sort: sortFilter.val(),
             search: searchInput.val().trim()
         };
-        
-        // Debug: log filter data
-        console.log('Filter Data:', filterData);
-        console.log('AJAX URL:', psp_ajax_object.ajax_url);
 
         $.post(psp_ajax_object.ajax_url, filterData)
             .done(function(response) {
-                console.log('=== AJAX Response ===');
-                console.log('Response:', response);
-                console.log('Success:', response.success);
-                console.log('Data:', response.data);
-                
                 if (response.success) {
                     tableBody.html(response.data.products_html);
                     paginationContainer.html(response.data.pagination_html);
-                    console.log('Products loaded, pagination updated');
-                    console.log('Current page:', response.data.current_page);
-                    console.log('Total pages:', response.data.total_pages);
+                    convertToMobile(true); // Force convert to mobile view when loading new data
+                    attachMobileEventHandlers(); // Reattach handlers after loading
                 } else {
-                    console.error('AJAX Error:', response);
-                    tableBody.html('<tr><td colspan="5">خطا در بارگذاری محصولات: ' + (response.data || 'نامشخص') + '</td></tr>');
+                    tableBody.html('<tr><td colspan="6">خطا در بارگذاری محصولات: ' + (response.data || 'نامشخص') + '</td></tr>');
                 }
             })
             .fail(function(xhr, status, error) {
-                console.error('=== AJAX Failed ===');
-                console.error('XHR:', xhr);
-                console.error('Status:', status);
-                console.error('Error:', error);
-                console.error('Response Text:', xhr.responseText);
-                tableBody.html('<tr><td colspan="5">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
+                tableBody.html('<tr><td colspan="6">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
             });
     }
 
@@ -86,6 +179,13 @@ jQuery(document).ready(function($) {
     stockFilter.on('change', () => fetchProducts(1));
     sortFilter.on('change', () => fetchProducts(1));
     searchButton.on('click', () => fetchProducts(1));
+    
+    // Convert on resize with debounce
+    let resizeTimer;
+    $(window).on('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(convertToMobile, 250);
+    });
     
     searchInput.on('keyup', () => {
         debounce(() => fetchProducts(1), 500); // جستجوی با تأخیر
@@ -105,16 +205,13 @@ jQuery(document).ready(function($) {
         const $this = $(this);
         const pageNum = $this.data('page');
         
-        console.log('Pagination clicked, page:', pageNum);
-        
         if (pageNum && pageNum > 0) {
             fetchProducts(pageNum);
-        } else {
-            console.error('Invalid page number:', pageNum);
         }
     });
 
-    tableBody.on('input', '.variation-price-input', function() {
+    // Price input formatting - delegate to both table and mobile
+    $(document).on('input', '.variation-price-input', function() {
         const cursorPosition = this.selectionStart;
         const originalLength = this.value.length;
         const unformattedValue = unformatNumber(this.value);
@@ -128,9 +225,18 @@ jQuery(document).ready(function($) {
         }
     });
 
-    tableBody.on('change', '.variation-price-input', function() {
+    // Price change handler - delegate to both table and mobile
+    $(document).on('blur', '.variation-price-input', function(e) {
         const inputField = $(this);
         const saveStatus = inputField.closest('.price-wrapper').find('.save-status');
+        
+        // Don't save if value hasn't changed
+        const currentValue = unformatNumber(inputField.val());
+        const originalValue = inputField.data('original-value') || '';
+        
+        if (currentValue === originalValue) {
+            return;
+        }
         
         saveStatus.removeClass('success error').addClass('saving');
 
@@ -138,7 +244,7 @@ jQuery(document).ready(function($) {
             action: 'psp_update_price',
             _ajax_nonce: psp_ajax_object.update_nonce,
             id: inputField.data('id'),
-            price: unformatNumber(inputField.val()),
+            price: currentValue,
             price_type: inputField.data('price-type')
         };
 
@@ -147,23 +253,39 @@ jQuery(document).ready(function($) {
                 saveStatus.removeClass('saving');
                 if (response.success) {
                     saveStatus.addClass('success');
+                    inputField.data('original-value', currentValue);
                 } else {
                     saveStatus.addClass('error');
-                    // Optionally show a more subtle error message instead of an alert
                 }
             })
-            .fail(function() {
+            .fail(function(xhr, status, error) {
                 saveStatus.removeClass('saving').addClass('error');
             })
             .always(function() {
                 setTimeout(() => saveStatus.removeClass('success error'), 2500);
             });
     });
+    
+    // Store original value on focus for mobile
+    $(document).on('focus', '.variation-price-input', function() {
+        const inputField = $(this);
+        if (!inputField.data('original-value')) {
+            inputField.data('original-value', unformatNumber(inputField.val()));
+        }
+    });
 
-    // Stock status update handler
-    tableBody.on('change', '.stock-status-select', function() {
+    // Stock status update handler - delegate to both table and mobile
+    $(document).on('change', '.stock-status-select', function() {
         const selectField = $(this);
         const saveStatus = selectField.closest('.stock-wrapper').find('.save-status');
+        
+        // Don't save if value hasn't changed
+        const currentValue = selectField.val();
+        const originalValue = selectField.data('original-value') || '';
+        
+        if (currentValue === originalValue) {
+            return;
+        }
         
         saveStatus.removeClass('success error').addClass('saving');
 
@@ -171,7 +293,7 @@ jQuery(document).ready(function($) {
             action: 'psp_update_stock_status',
             _ajax_nonce: psp_ajax_object.update_nonce,
             id: selectField.data('id'),
-            stock_status: selectField.val()
+            stock_status: currentValue
         };
 
         $.post(psp_ajax_object.ajax_url, stockData)
@@ -179,15 +301,24 @@ jQuery(document).ready(function($) {
                 saveStatus.removeClass('saving');
                 if (response.success) {
                     saveStatus.addClass('success');
+                    selectField.data('original-value', currentValue);
                 } else {
                     saveStatus.addClass('error');
                 }
             })
-            .fail(function() {
+            .fail(function(xhr, status, error) {
                 saveStatus.removeClass('saving').addClass('error');
             })
             .always(function() {
                 setTimeout(() => saveStatus.removeClass('success error'), 2500);
             });
+    });
+    
+    // Store original value on focus for stock select
+    $(document).on('focus', '.stock-status-select', function() {
+        const selectField = $(this);
+        if (!selectField.data('original-value')) {
+            selectField.data('original-value', selectField.val());
+        }
     });
 });
