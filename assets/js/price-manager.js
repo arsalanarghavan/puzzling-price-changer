@@ -21,6 +21,29 @@ jQuery(document).ready(function($) {
         debounceTimer = window.setTimeout(callback, time);
     };
     
+    const setBrandOriginalValue = ($select, value) => {
+        const safeValue = value || '';
+        $select.attr('data-original-value', safeValue);
+        $select.data('original-value', safeValue);
+    };
+
+    const getBrandOriginalValue = ($select) => {
+        const attrValue = $select.attr('data-original-value');
+        if (typeof attrValue !== 'undefined') {
+            return attrValue;
+        }
+        const dataValue = $select.data('original-value');
+        return typeof dataValue === 'undefined' ? '' : dataValue;
+    };
+
+    function initializeBrandSelects(root) {
+        const $root = root && root.jquery ? root : $(root || document);
+        $root.find('.brand-select').each(function() {
+            const $select = $(this);
+            setBrandOriginalValue($select, $select.val() || '');
+        });
+    }
+    
     // Reattach event handlers after mobile conversion
     function attachMobileEventHandlers() {
         // Event handlers are already delegated via $(document).on()
@@ -36,6 +59,13 @@ jQuery(document).ready(function($) {
             const $select = $(this);
             if (!$select.data('original-value')) {
                 $select.data('original-value', $select.val());
+            }
+        });
+
+        $('.psp-mobile-field-content .brand-select').each(function() {
+            const $select = $(this);
+            if (typeof $select.attr('data-original-value') === 'undefined') {
+                setBrandOriginalValue($select, $select.val() || '');
             }
         });
     }
@@ -75,12 +105,17 @@ jQuery(document).ready(function($) {
             const $row = $(this);
             const $cells = $row.find('td');
             
-            if ($cells.length < 6) return; // Skip empty/error rows
+            if ($cells.length < 7) return; // Skip empty/error rows
             
             // Clone wrapper divs from table (price-wrapper and stock-wrapper) to keep original in DOM
-            const $regularPriceWrapper = $cells.eq(3).find('.price-wrapper').clone(true, true);
-            const $salePriceWrapper = $cells.eq(4).find('.price-wrapper').clone(true, true);
-            const $stockWrapper = $cells.eq(5).find('.stock-wrapper').clone(true, true);
+            const $brandWrapper = $cells.eq(3).find('.brand-wrapper').clone(true, true);
+            const $regularPriceWrapper = $cells.eq(4).find('.price-wrapper').clone(true, true);
+            const $salePriceWrapper = $cells.eq(5).find('.price-wrapper').clone(true, true);
+            const $stockWrapper = $cells.eq(6).find('.stock-wrapper').clone(true, true);
+
+            if ($brandWrapper.length === 0) {
+                return;
+            }
             
             // Get image
             const $image = $cells.eq(0).find('img');
@@ -90,13 +125,16 @@ jQuery(document).ready(function($) {
             $attrs.find('.attribute-tag').removeClass('attribute-tag').addClass('psp-mobile-tag');
             
             // Add mobile classes to cloned wrappers and elements
+            $brandWrapper.addClass('psp-mobile-wrapper');
             $regularPriceWrapper.addClass('psp-mobile-wrapper');
             $salePriceWrapper.addClass('psp-mobile-wrapper');
             $stockWrapper.addClass('psp-mobile-wrapper');
             
+            $brandWrapper.find('.brand-select').addClass('psp-mobile-select');
             $regularPriceWrapper.find('.variation-price-input').addClass('psp-mobile-input');
             $salePriceWrapper.find('.variation-price-input').addClass('psp-mobile-input');
             $stockWrapper.find('.stock-status-select').addClass('psp-mobile-select');
+            $brandWrapper.find('.save-status').addClass('psp-mobile-status');
             $regularPriceWrapper.find('.save-status').addClass('psp-mobile-status');
             $salePriceWrapper.find('.save-status').addClass('psp-mobile-status');
             $stockWrapper.find('.save-status').addClass('psp-mobile-status');
@@ -115,6 +153,11 @@ jQuery(document).ready(function($) {
             const $attrsField = $('<div class="psp-mobile-field"></div>')
                 .append('<div class="psp-mobile-label">ویژگی‌ها</div>')
                 .append('<div class="psp-mobile-tags">' + $attrs.html() + '</div>');
+
+            // Brand - use cloned wrapper
+            const $brandField = $('<div class="psp-mobile-field"></div>')
+                .append('<div class="psp-mobile-label">برند</div>')
+                .append($('<div class="psp-mobile-field-content"></div>').append($brandWrapper));
             
             // Regular price - use cloned wrapper
             const $regularField = $('<div class="psp-mobile-field"></div>')
@@ -131,17 +174,23 @@ jQuery(document).ready(function($) {
                 .append('<div class="psp-mobile-label">موجودی</div>')
                 .append($('<div class="psp-mobile-field-content"></div>').append($stockWrapper));
             
-            $body.append($nameField).append($attrsField).append($regularField).append($saleField).append($stockField);
+            $body.append($nameField)
+                .append($attrsField)
+                .append($brandField)
+                .append($regularField)
+                .append($saleField)
+                .append($stockField);
             $card.append($header).append($body);
             mobileBody.append($card);
         });
         
         attachMobileEventHandlers();
+        initializeBrandSelects(mobileBody);
     }
     
     // --- Core Functions ---
     function fetchProducts(page = 1) {
-        tableBody.html('<tr><td colspan="6" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
+        tableBody.html('<tr><td colspan="7" style="text-align:center; padding: 40px 0;"><span class="spinner is-active"></span></td></tr>');
         paginationContainer.empty();
 
         const filterData = {
@@ -160,14 +209,16 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     tableBody.html(response.data.products_html);
                     paginationContainer.html(response.data.pagination_html);
+                    initializeBrandSelects(tableBody);
                     convertToMobile(true); // Force convert to mobile view when loading new data
                     attachMobileEventHandlers(); // Reattach handlers after loading
+                    initializeBrandSelects(mobileBody);
                 } else {
-                    tableBody.html('<tr><td colspan="6">خطا در بارگذاری محصولات: ' + (response.data || 'نامشخص') + '</td></tr>');
+                    tableBody.html('<tr><td colspan="7">خطا در بارگذاری محصولات: ' + (response.data || 'نامشخص') + '</td></tr>');
                 }
             })
             .fail(function(xhr, status, error) {
-                tableBody.html('<tr><td colspan="6">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
+                tableBody.html('<tr><td colspan="7">خطای ارتباط با سرور. لطفاً صفحه را رفرش کنید.</td></tr>');
             });
     }
 
@@ -271,6 +322,67 @@ jQuery(document).ready(function($) {
         const inputField = $(this);
         if (!inputField.data('original-value')) {
             inputField.data('original-value', unformatNumber(inputField.val()));
+        }
+    });
+
+    // Brand update handler - delegate to both table and mobile
+    $(document).on('change', '.brand-select', function() {
+        const selectField = $(this);
+        const productId = parseInt(selectField.data('product-id'), 10);
+
+        if (!productId) {
+            return;
+        }
+
+        const saveStatus = selectField.closest('.brand-wrapper').find('.save-status');
+        const currentValue = selectField.val() || '';
+        const originalValue = getBrandOriginalValue(selectField);
+
+        if (currentValue === originalValue) {
+            return;
+        }
+
+        saveStatus.removeClass('success error').addClass('saving');
+
+        const brandData = {
+            action: 'psp_update_brand',
+            _ajax_nonce: psp_ajax_object.update_nonce,
+            id: productId,
+            brand_slug: currentValue
+        };
+
+        $.post(psp_ajax_object.ajax_url, brandData)
+            .done(function(response) {
+                saveStatus.removeClass('saving');
+                if (response.success) {
+                    saveStatus.addClass('success');
+                    const $relatedSelects = $('.brand-select[data-product-id="' + productId + '"]');
+                    $relatedSelects.each(function() {
+                        const $relatedSelect = $(this);
+                        $relatedSelect.val(currentValue);
+                        setBrandOriginalValue($relatedSelect, currentValue);
+                    });
+                } else {
+                    saveStatus.addClass('error');
+                    selectField.val(originalValue);
+                }
+            })
+            .fail(function() {
+                saveStatus.removeClass('saving').addClass('error');
+                selectField.val(originalValue);
+            })
+            .always(function() {
+                setTimeout(function() {
+                    saveStatus.removeClass('success error');
+                }, 2500);
+            });
+    });
+
+    // Store original value on focus for brand select
+    $(document).on('focus', '.brand-select', function() {
+        const $select = $(this);
+        if (typeof $select.attr('data-original-value') === 'undefined') {
+            setBrandOriginalValue($select, $select.val() || '');
         }
     });
 

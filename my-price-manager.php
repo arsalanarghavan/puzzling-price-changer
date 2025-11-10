@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       تغییر قیمت‌ها
  * Description:       صفحه مدیریت قیمت‌های محصولات ووکامرس با امکان تغییر موجودی
- * Version:           2.3.1
+ * Version:           2.4.0
  * Author:            Arsalan Arghavan
  * Text Domain:       puzzling-price-changer
  * Domain Path:       /languages
@@ -54,6 +54,51 @@ function psp_add_admin_menu() {
 }
 add_action('admin_menu', 'psp_add_admin_menu');
 
+/**
+ * Retrieve the primary brand slug for a product.
+ *
+ * @param int $product_id
+ * @return string
+ */
+function psp_get_product_brand_slug($product_id) {
+    $terms = wp_get_post_terms($product_id, 'product_brand');
+
+    if (is_wp_error($terms) || empty($terms)) {
+        return '';
+    }
+
+    // Use the first term as the primary brand.
+    return $terms[0]->slug;
+}
+
+/**
+ * Build the brand dropdown HTML for a product row.
+ *
+ * @param array  $brand_terms
+ * @param string $selected_slug
+ * @param int    $product_id
+ * @return string
+ */
+function psp_build_brand_select($brand_terms, $selected_slug, $product_id) {
+    $options_html = '<option value="">بدون برند</option>';
+
+    if (!empty($brand_terms)) {
+        foreach ($brand_terms as $brand_term) {
+            $selected_attr = selected($selected_slug, $brand_term->slug, false);
+            $options_html .= '<option value="' . esc_attr($brand_term->slug) . '"' . $selected_attr . '>' . esc_html($brand_term->name) . '</option>';
+        }
+    }
+
+    $html  = '<div class="brand-wrapper">';
+    $html .= '<select class="brand-select" data-product-id="' . esc_attr($product_id) . '" data-original-value="' . esc_attr($selected_slug) . '">';
+    $html .= $options_html;
+    $html .= '</select>';
+    $html .= '<span class="save-status"><span class="spinner"></span><span class="status-icon"></span></span>';
+    $html .= '</div>';
+
+    return $html;
+}
+
 // 2. Render the Main Admin Page HTML Structure
 function psp_render_admin_page() {
     ?>
@@ -75,14 +120,14 @@ function psp_render_admin_page() {
             ]);
 
             // Dropdown for brands
-            $brands = get_terms(['taxonomy' => 'pwb-brand', 'hide_empty' => false]);
+            $brands = get_terms(['taxonomy' => 'product_brand', 'hide_empty' => false]);
+            echo '<select id="psp_brand_filter" name="psp_brand_filter" class="psp-filter-select"><option value="">همه برندها</option>';
             if (!is_wp_error($brands) && !empty($brands)) {
-                echo '<select id="psp_brand_filter" name="psp_brand_filter" class="psp-filter-select"><option value="">همه برندها</option>';
                 foreach ($brands as $brand) {
                     echo '<option value="' . esc_attr($brand->slug) . '">' . esc_html($brand->name) . '</option>';
                 }
-                echo '</select>';
             }
+            echo '</select>';
             
             // Stock status filter
             echo '<select id="psp_stock_filter" name="psp_stock_filter" class="psp-filter-select">
@@ -115,6 +160,7 @@ function psp_render_admin_page() {
                         <th class="product-image-col">تصویر</th>
                         <th class="product-name-col">نام محصول</th>
                         <th class="attributes-col">ویژگی‌ها</th>
+                        <th class="brand-col">برند</th>
                         <th class="price-col">قیمت (تومان)</th>
                         <th class="price-col">قیمت با تخفیف (تومان)</th>
                         <th class="stock-col">موجودی</th>
@@ -148,6 +194,11 @@ function psp_ajax_get_products() {
     
     // Debug log
     error_log('PSP AJAX: Page = ' . $paged . ', Search = ' . $search_term);
+
+    $brand_terms = get_terms(['taxonomy' => 'product_brand', 'hide_empty' => false]);
+    if (is_wp_error($brand_terms)) {
+        $brand_terms = [];
+    }
 
     // Handle sort order
     $sort_option = isset($_POST['sort']) ? sanitize_text_field($_POST['sort']) : 'date_desc';
@@ -210,7 +261,7 @@ function psp_ajax_get_products() {
 
         if (!empty($_POST['brand'])) {
             $args['tax_query'][] = [
-                'taxonomy' => 'pwb-brand',
+                'taxonomy' => 'product_brand',
                 'field'    => 'slug',
                 'terms'    => sanitize_text_field($_POST['brand']),
             ];
@@ -231,6 +282,8 @@ function psp_ajax_get_products() {
 
             if ($product->is_type('variable')) {
                 $variations_data = $product->get_available_variations();
+                $parent_brand_slug = psp_get_product_brand_slug($product->get_id());
+                $brand_select_html = psp_build_brand_select($brand_terms, $parent_brand_slug, $product->get_id());
                 foreach ($variations_data as $i => $variation_data) {
                     $variation = wc_get_product($variation_data['variation_id']);
                     if (!$variation) continue;
@@ -252,6 +305,9 @@ function psp_ajax_get_products() {
                                 $term = get_term_by('slug', $term_slug, $taxonomy);
                                 echo '<span class="attribute-tag">' . wc_attribute_label($taxonomy) . ': <strong>' . ($term ? esc_html($term->name) : esc_html($term_slug)) . '</strong></span>';
                             } ?>
+                        </td>
+                        <td class="brand-col" data-label="برند">
+                            <?php echo $brand_select_html; ?>
                         </td>
                         <td data-label="قیمت (تومان)">
                             <div class="price-wrapper">
@@ -279,6 +335,8 @@ function psp_ajax_get_products() {
                 }
             } else { // For simple products and other types
                 $stock_status = $product->get_stock_status();
+                $product_brand_slug = psp_get_product_brand_slug($product->get_id());
+                $brand_select_html = psp_build_brand_select($brand_terms, $product_brand_slug, $product->get_id());
                 
                 // Apply stock filter if set
                 if (!empty($stock_status_filter) && $stock_status !== $stock_status_filter) {
@@ -291,6 +349,9 @@ function psp_ajax_get_products() {
                     </td>
                     <td data-label="نام محصول"><strong><?php echo esc_html($product->get_name()); ?></strong></td>
                     <td class="attributes-cell" data-label="ویژگی‌ها"><span class="attribute-tag">محصول ساده</span></td>
+                    <td class="brand-col" data-label="برند">
+                        <?php echo $brand_select_html; ?>
+                    </td>
                     <td data-label="قیمت (تومان)">
                         <div class="price-wrapper">
                             <input type="text" class="variation-price-input" value="<?php echo esc_attr($product->get_regular_price() ? number_format($product->get_regular_price()) : ''); ?>" data-price-type="regular" data-id="<?php echo esc_attr($product->get_id()); ?>">
@@ -318,7 +379,7 @@ function psp_ajax_get_products() {
         }
         wp_reset_postdata();
     } else {
-        echo '<tr><td colspan="6">هیچ محصولی با این مشخصات یافت نشد.</td></tr>';
+        echo '<tr><td colspan="7">هیچ محصولی با این مشخصات یافت نشد.</td></tr>';
     }
     $products_html = ob_get_clean();
 
@@ -423,6 +484,41 @@ function psp_ajax_update_stock_status() {
 }
 add_action('wp_ajax_psp_update_stock_status', 'psp_ajax_update_stock_status');
 
+// 7a. AJAX Handler for Updating Brand
+function psp_ajax_update_brand() {
+    check_ajax_referer('psp_update_price_nonce');
+
+    $product_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    if ($product_id <= 0) {
+        wp_send_json_error(['message' => 'شناسه نامعتبر است.']);
+    }
+
+    $brand_slug = isset($_POST['brand_slug']) ? sanitize_text_field(wp_unslash($_POST['brand_slug'])) : '';
+
+    if ($brand_slug === '') {
+        $result = wp_set_object_terms($product_id, [], 'product_brand', false);
+        if (is_wp_error($result)) {
+            wp_send_json_error(['message' => 'امکان حذف برند وجود ندارد.']);
+        }
+
+        wp_send_json_success(['message' => 'برند حذف شد.']);
+    }
+
+    $brand_term = get_term_by('slug', $brand_slug, 'product_brand');
+    if (!$brand_term || is_wp_error($brand_term)) {
+        wp_send_json_error(['message' => 'برند انتخابی نامعتبر است.']);
+    }
+
+    $result = wp_set_object_terms($product_id, (int) $brand_term->term_id, 'product_brand', false);
+
+    if (is_wp_error($result)) {
+        wp_send_json_error(['message' => 'امکان ذخیره برند وجود ندارد.']);
+    }
+
+    wp_send_json_success(['message' => 'برند ذخیره شد.']);
+}
+add_action('wp_ajax_psp_update_brand', 'psp_ajax_update_brand');
+
 // 7. Enqueue Scripts and Styles
 function psp_enqueue_admin_scripts($hook) {
     // Debug: Log hook name
@@ -438,8 +534,8 @@ function psp_enqueue_admin_scripts($hook) {
         error_log('PSP: Enqueuing scripts for hook: ' . $hook);
         
         wp_enqueue_style('dashicons');
-        wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '2.3.1');
-        wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '2.3.1', true);
+        wp_enqueue_style('psp-admin-styles', plugin_dir_url(__FILE__) . 'assets/css/price-manager.css', ['dashicons'], '2.4.1');
+        wp_enqueue_script('psp-admin-script', plugin_dir_url(__FILE__) . 'assets/js/price-manager.js', ['jquery'], '2.4.1', true);
         
         wp_localize_script('psp-admin-script', 'psp_ajax_object', [
             'ajax_url'     => admin_url('admin-ajax.php'),
